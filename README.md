@@ -49,9 +49,26 @@ El repositorio cuenta con un panel unificado y 4 scripts modulares secuenciales 
 | `setup_watchdog.sh` (`skunk_watchdog.sh`) | **Herramienta 12:** Demonio Systemd (`skunk-watchdog.timer`) que inspecciona cada 30s colas detenidas por papel o cables USB y las desatasca automáticamente (`cupsaccept/cupsenable`). |
 | `backup_restore.sh` | **Herramienta 13:** Módulo de recuperación ante desastres que empaqueta o restaura en `.tar.gz` todas las colas CUPS, PPDs y políticas para clonar servidores en segundos. |
 | `tune_mdns.sh` | **Herramienta 14:** Afinamiento extremo de latencia mDNS/ZeroConf (`host-name-ttl=60`, rlimits, intervals) para que Android descubra impresoras en Wi-Fi en `< 1 segundo`. |
-| `setup_webui.sh` (`skunk_webui.py`) | **Herramienta 15 (⭐ Web UI):** Portal Web de Gestión en Flask (`http://IP_SERVIDOR:8080`) con diseño moderno Dark Glassmorphism para administrar colas, añadir impresoras USB/Red, hacer pruebas y descargar respaldos visualmente desde un móvil o tablet. |
+| `setup_webui.sh` (`skunk_webui.py`) | **Herramienta 15 (⭐ Web UI Dashboard):** Portal Web de Gestión en Flask (`http://IP_SERVIDOR:8080`) protegido por contraseña de seguridad (`Lasgarzas911`), con temas dinámicos **AMOLED Oscuro (#000000)** y **Modo Claro**, descarga/importación visual de respaldos con 1 Clic, calibración de sensores y pruebas térmicas EPL2/ZPL. |
 | `TROUBLESHOOTING.md` | **Manual de Depuración:** Guía completa con soluciones a problemas comunes de subred, aislamiento Wi-Fi y políticas en móviles Android. |
 | `PROXMOX_LXC_SETUP.md` | **Guía de Proxmox VE:** Instrucciones exactas para configurar red (bridge L2) y pasarela USB (Passthrough) hacia un Contenedor LXC Ubuntu Server. |
+
+---
+
+## 🌐 Interfaz Web de Administración (Web UI & Seguridad)
+
+Además de la terminal, **Skunk PC** cuenta con un potente portal visual que se ejecuta de fondo en el puerto **8080** y puede ser consultado desde cualquier teléfono, tablet o computadora dentro de la subred de la planta:
+
+* **Acceso URL:** `http://IP_DE_TU_SERVIDOR:8080`
+* **Contraseña Predeterminada de Seguridad:** `Lasgarzas911` (protege todas las operaciones críticas y endpoints API contra modificaciones no autorizadas en la red).
+* **Temas Dinámicos Inteligentes:**
+  * 🌑 **Modo AMOLED Oscuro (`#000000` True-Black):** Apaga los píxeles OLED de dispositivos móviles para un máximo contraste en planta y ahorro de batería del 100%.
+  * ☀️ **Modo Claro (Clean Slate):** Colores claros y nitidez óptima para monitores de escritorio en zonas iluminadas.
+  * *Persistencia inteligente vía `localStorage` y cero destellos (Zero FOUC).*
+* **Gestión & Respaldo a 1 Clic:**
+  * **📦 Descargar Respaldo:** Crea un paquete `.tar.gz` con todas las colas, PPDs y ajustes Wi-Fi al instante.
+  * **📤 Importar Respaldo:** Sube un archivo `.tar.gz` desde tu PC o celular y clona/restaura el servidor por completo en menos de 15 segundos sin tocar la consola.
+* **Pruebas y Calibración Térmica:** Botones de testeo dual (**EPL2 / ZPL II**) y forzado de calibración de sensor de etiquetas con un solo toque.
 
 ---
 
@@ -69,7 +86,7 @@ cd Skunk-PC
 ```bash
 sudo ./skunk_manager.sh
 ```
-Desde este panel podrás ejecutar en orden los pasos **[1] -> [2] -> [3] -> [4]** y acceder a todas las herramientas avanzadas de planta (cambio de red, renombramiento, calibración de etiquetas, etc.).
+Desde este panel podrás ejecutar en orden los pasos **[1] -> [2] -> [3] -> [4]** o iniciar el portal web **[15]**.
 
 ---
 
@@ -111,4 +128,6 @@ window.print();
 ---
 
 ## 👥 Soporte e Ingeniería
-Desarrollado y estructurado siguiendo prácticas de DevOps, Arquitectura de Redes Linux y Automatización de Sistemas para operación continua industrial.
+
+**Desarrollado por German Marambio © 2026**  
+*Estructurado siguiendo prácticas de DevOps, Arquitectura de Redes Linux y Automatización de Sistemas para operación continua industrial en plantas de alta exigencia.*
