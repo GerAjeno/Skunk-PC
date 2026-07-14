@@ -257,6 +257,9 @@ LOGIN_TEMPLATE = """
             <button type="submit" class="btn-submit">Entrar al Portal</button>
         </form>
         <button type="button" id="theme-toggle-btn" onclick="toggleTheme()" class="theme-btn">☀️ Modo Claro</button>
+        <div style="margin-top: 2rem; font-size: 0.8rem; color: var(--subtext); border-top: 1px solid var(--border); padding-top: 1.2rem;">
+            Desarrollado por German Marambio © <script>document.write(new Date().getFullYear())</script>
+        </div>
     </div>
 </body>
 </html>
@@ -742,6 +745,9 @@ HTML_TEMPLATE = """
             if (data.ok) location.reload();
         }
     </script>
+    <footer style="text-align: center; margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--border); color: var(--subtext); font-size: 0.85rem; font-weight: 500;">
+        Desarrollado por German Marambio © <script>document.write(new Date().getFullYear())</script>
+    </footer>
 </body>
 </html>
 """
