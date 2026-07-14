@@ -32,20 +32,22 @@ graph LR
 
 ## 📁 Estructura del Proyecto y Scripts de Automatización
 
-El repositorio se divide en scripts modulares que cubren la instalación, configuración del firewall/IPP y autoconfiguración USB de las impresoras:
+El repositorio cuenta con un panel unificado y 4 scripts modulares secuenciales diseñados para ejecutarse de forma interactiva en la terminal del servidor final:
 
-| Script | Descripción | Estado |
-| :--- | :--- | :--- |
-| `setup_printserver.sh` | **Paso 1:** Instalación de paquetes obligatorios (`cups`, `avahi-daemon`, `cups-browsed`, `foo2zjs`), configuración del grupo `lpadmin` e inicialización de servicios systemd. | ✅ Listo |
-| `configure_cups_network.sh` | **Paso 2:** Configuración avanzada de `/etc/cups/cupsd.conf` para escucha en todas las interfaces, permisos por subred y directivas IPP/AirPrint. | ⏳ En desarrollo |
-| `add_zebra_printers.sh` | **Paso 3:** Escaneo de puertos USB (`lpinfo -v`), registro automático o interactivo de hasta 6 impresoras Zebra GC420t con parámetros térmicos óptimos (203 DPI, 4x6"). | ⏳ En desarrollo |
-| `diagnose_printserver.sh` | **Paso 4:** Diagnóstico completo, pruebas mDNS (`avahi-browse`), estado de colas y comandos de impresión de prueba con ZPL. | ⏳ En desarrollo |
+| Archivo / Script | Descripción |
+| :--- | :--- |
+| `skunk_manager.sh` | **Panel Centralizado (Dashboard):** Menú interactivo que orquesta y gestiona la ejecución completa de los 4 pasos, consulta de colas y lectura de guías sin salir de la terminal. |
+| `setup_printserver.sh` | **Paso 1:** Instalación de paquetes obligatorios (`cups`, `avahi-daemon`, `cups-browsed`, `foo2zjs`), configuración de permisos en grupo `lpadmin` e inicialización de servicios systemd. |
+| `configure_cups_network.sh` | **Paso 2:** Configuración avanzada de `/etc/cups/cupsd.conf` para escucha en todas las interfaces, permisos por subred Wi-Fi LAN y apertura de puertos en cortafuegos (631 TCP/UDP y 5353 UDP). |
+| `add_zebra_printers.sh` | **Paso 3:** Escaneo de puertos USB (`lpinfo -v`), registro automático o interactivo de hasta 6 impresoras Zebra GC420t con parámetros térmicos optimizados y modo simulación/prueba. |
+| `diagnose_printserver.sh` | **Paso 4:** Diagnóstico integral de servicios, auditoría de anuncios mDNS/IPP hacia Android (`avahi-browse`) y generación de etiquetas de prueba directas en lenguaje **ZPL II**. |
+| `TROUBLESHOOTING.md` | **Manual de Depuración:** Guía completa con soluciones a problemas comunes de subred, aislamiento Wi-Fi y políticas en móviles Android. |
 
 ---
 
 ## 🚀 Guía Rápida de Instalación en el PC Final
 
-Una vez clonado este repositorio en la máquina Linux que actuará como Servidor de Impresión:
+Una vez que tengas el PC con Linux en planta o almacén, simplemente abre una terminal y ejecuta:
 
 ### 1. Clonar el Repositorio
 ```bash
@@ -53,13 +55,31 @@ git clone https://github.com/GerAjeno/Skunk-PC.git
 cd Skunk-PC
 ```
 
-### 2. Ejecutar el Paso 1 (Preparación Base e Instalación de Dependencias)
+### 2. Ejecutar el Panel Unificado de Administración
+```bash
+sudo ./skunk_manager.sh
+```
+Desde este panel podrás ejecutar en orden los pasos **[1] -> [2] -> [3] -> [4]** con un solo clic o comando.
+
+### Alternativa: Ejecución Manual Paso a Paso
+Si prefieres ejecutar los scripts individualmente por terminal:
 ```bash
 sudo ./setup_printserver.sh
+sudo ./configure_cups_network.sh
+sudo ./add_zebra_printers.sh
+sudo ./diagnose_printserver.sh
 ```
-*Este comando actualizará el sistema, instalará CUPS y Avahi, agregará tu usuario al grupo `lpadmin` y levantará los servicios.*
 
 ---
 
-## 👥 Soporte y Contribuciones
-Proyecto desarrollado con los más altos estándares de Ingeniería DevOps y Administración de Sistemas Linux para garantizar alta disponibilidad y cero mantenimiento en planta.
+## 🔬 Verificación de Conectividad con Smartphones Android
+1. Conecta el teléfono Android a la **misma red Wi-Fi** que el servidor Skunk PC.
+2. Abre Google Chrome en Android o cualquier aplicación compatible.
+3. Presiona **Compartir -> Imprimir**.
+4. En el selector de impresoras, verás aparecer automáticamente las colas del servidor (por ejemplo: `Zebra_GC420t_Caja_1 @ Skunk-PC`) con el icono de impresora en red.
+5. ¡Presiona **Imprimir** y retira tu etiqueta térmica!
+
+---
+
+## 👥 Soporte e Ingeniería
+Desarrollado y estructurado siguiendo prácticas de DevOps, Arquitectura de Redes Linux y Automatización de Sistemas para operación continua industrial.
