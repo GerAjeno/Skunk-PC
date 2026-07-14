@@ -34,8 +34,8 @@ echo -e "${CYAN}================================================================
 log_info "Verificando controladores disponibles en CUPS para Zebra EPL2/ZPL..."
 PPD_MODEL=""
 
-# Intentar buscar PPD en lpinfo -m
-if PPD_MODEL=$(lpinfo -m 2>/dev/null | awk '/Zebra.*ZPL/ || /foo2zjs.*Zebra/ || /Zebra.*TLP2844/ || /drv:\/\/\/sample.drv\/zebra.ppd/ || /Zebra.*EPL2/ {print $1; exit}'); then
+# Intentar buscar PPD en lpinfo -m priorizando EPL2 (nativo para TLP2844 / GC420t en modo EPL)
+if PPD_MODEL=$(lpinfo -m 2>/dev/null | awk '/zebraep2.ppd/ || /Zebra.*EPL2/ || /Zebra.*TLP2844/ || /zebra.ppd/ || /Zebra.*ZPL/ {print $1; exit}'); then
     if [ -n "$PPD_MODEL" ]; then
         log_success "Driver compatible detectado en CUPS: ${YELLOW}${PPD_MODEL}${NC}"
     fi
@@ -43,8 +43,8 @@ fi
 
 if [ -z "$PPD_MODEL" ]; then
     log_warn "No se encontró un PPD explícito de Zebra en la cache rápida de CUPS."
-    log_info "Asignando controlador genérico nativo 'raw' o 'drv:///sample.drv/zebra.ppd'."
-    PPD_MODEL="drv:///sample.drv/zebra.ppd"
+    log_info "Asignando controlador nativo de Eltron/Zebra EPL2 'drv:///sample.drv/zebraep2.ppd'."
+    PPD_MODEL="drv:///sample.drv/zebraep2.ppd"
 fi
 echo ""
 

@@ -54,9 +54,9 @@ echo ""
 log_info "Impresora seleccionada para pruebas: ${YELLOW}${TARGET}${NC}"
 
 echo -e "\n${BOLD}--- Selecciona el Tipo de Prueba o Calibración ---${NC}"
-echo -e "  [1] ${BOLD}Etiqueta de Prueba Estándar (Texto y Cuadro ZPL)${NC} -> Verifica alineación básica y nitidez"
-echo -e "  [2] ${BOLD}Etiqueta Logística con Código de Barras (ZPL II)${NC} -> Simula una etiqueta real de almacén con código 128"
-echo -e "  [3] ${BOLD}Calibración Física del Papel Térmico (~JC / gap calibration)${NC} -> Fuerza al sensor a medir el corte entre etiquetas"
+echo -e "  [1] ${BOLD}Etiqueta de Prueba Estándar en EPL2 / ZPL${NC} -> Verifica alineación básica y nitidez"
+echo -e "  [2] ${BOLD}Etiqueta Logística con Código de Barras (EPL2 / ZPL)${NC} -> Simula una etiqueta real de almacén"
+echo -e "  [3] ${BOLD}Calibración Física del Papel Térmico (`jc` en EPL / `~JC` en ZPL)${NC} -> Mide el corte entre etiquetas"
 echo -e "  [4] ${BOLD}Página de Prueba Nativa de CUPS (`testprint` / PPD)${NC} -> Verifica el filtro del controlador del sistema"
 echo -e "  [0] Salir sin imprimir"
 echo ""
@@ -64,51 +64,25 @@ read -p "Opción [0-4]: " TEST_OPT
 
 case "${TEST_OPT:-0}" in
     1)
-        log_info "Enviando etiqueta de prueba ZPL básica a '${TARGET}'..."
-        TEST_FILE="/tmp/skunk_basic.zpl"
-        cat << 'EOF' > "$TEST_FILE"
-^XA
-^PW609
-^LL914
-^FO50,50^GB500,800,4^FS
-^FO80,100^A0N,45,45^FDPRUEBA SKUNK PC^FS
-^FO80,180^A0N,30,30^FDServidor: Ubuntu / Proxmox^FS
-^FO80,240^A0N,30,30^FDImpresora: Zebra OK^FS
-^FO80,320^A0N,30,30^FDEstado: Conectada y Lista^FS
-^FO80,500^A0N,35,35^FD--- TEST EXITOSO ---^FS
-^XZ
-EOF
-        lp -d "$TARGET" -o raw "$TEST_FILE" || log_error "Fallo al enviar el trabajo."
+        log_info "Enviando etiqueta de prueba estándar a '${TARGET}' en formato EPL2 (Nativo TLP2844)..."
+        echo -e "\nN\nq609\nQ914,24\nA50,50,0,4,1,1,N,\"PRUEBA SKUNK PC - EPL2 OK\"\nA50,130,0,3,1,1,N,\"Servidor: Ubuntu / Proxmox\"\nA50,190,0,3,1,1,N,\"Impresora: Zebra TLP2844 OK\"\nA50,270,0,4,1,1,N,\"--- TEST EXITOSO ---\"\nP1\n" | lp -d "$TARGET" -o raw || log_error "Fallo al enviar el trabajo."
+        # También enviar ZPL por si es una GC420t dual
+        echo -e "^XA^FO50,50^A0N,45,45^FDPRUEBA SKUNK PC ZPL^FS^FO50,120^A0N,30,30^FDTLP2844 / GC420t OK^FS^XZ" | lp -d "$TARGET" -o raw 2>/dev/null || true
         log_success "Trabajo enviado correctamente. Revisa la salida en la impresora."
         ;;
     2)
-        log_info "Enviando etiqueta con Código de Barras (Code 128) a '${TARGET}'..."
-        TEST_FILE="/tmp/skunk_barcode.zpl"
-        cat << 'EOF' > "$TEST_FILE"
-^XA
-^PW609
-^LL914
-^FO50,50^GB500,4,4^FS
-^FO60,80^A0N,40,40^FDETIQUETA LOGISTICA SKUNK^FS
-^FO60,140^A0N,25,25^FDDOMINIO: SKUNK-PC.LOCAL^FS
-^FO60,200^BY3,2,120
-^FO60,200^BCN,120,Y,N,N
-^FDSKUNK-PRINTOK-2026^FS
-^FO60,380^A0N,25,25^FDMOPRIA / AIRPRINT / IPP COMPATIBLE^FS
-^FO50,440^GB500,4,4^FS
-^XZ
-EOF
-        lp -d "$TARGET" -o raw "$TEST_FILE" || log_error "Fallo al enviar el código de barras."
+        log_info "Enviando etiqueta con Código de Barras (Code 128) en formato EPL2 y ZPL a '${TARGET}'..."
+        echo -e "\nN\nq609\nQ914,24\nA60,60,0,4,1,1,N,\"ETIQUETA LOGISTICA SKUNK\"\nB60,130,0,1,2,6,100,B,\"SKUNK-PRINTOK-2026\"\nA60,260,0,3,1,1,N,\"MOPRIA / AIRPRINT / IPP COMPATIBLE\"\nP1\n" | lp -d "$TARGET" -o raw || log_error "Fallo al enviar el código de barras."
         log_success "Etiqueta con código de barras enviada."
         ;;
     3)
         log_info "Iniciando CALIBRACIÓN DE SENSOR en '${TARGET}'..."
         log_warn "La impresora expulsará 2 o 3 etiquetas en blanco mientras mide el corte (gap) entre ellas."
+        # Comando EPL2 nativo de calibración de sensor: jc
+        echo -e "\njc\n" | lp -d "$TARGET" -o raw 2>/dev/null || true
         # Comando ZPL de calibración de sensor: ~JC
-        echo -e "~JC\n^XA^JUS^XZ" | lp -d "$TARGET" -o raw || log_error "Fallo al enviar orden de calibración."
-        # También enviar comando en EPL por si la impresora está operando en modo EPL2 puro
-        echo -e "jc\n" | lp -d "$TARGET" -o raw 2>/dev/null || true
-        log_success "Orden de calibración enviada. El sensor del papel térmico se ha calibrado y guardado en memoria."
+        echo -e "~JC\n^XA^JUS^XZ" | lp -d "$TARGET" -o raw 2>/dev/null || true
+        log_success "Orden de calibración enviada. El sensor del papel térmico se ha calibrado."
         ;;
     4)
         log_info "Enviando página de prueba nativa del motor CUPS (`testprint`) a '${TARGET}'..."

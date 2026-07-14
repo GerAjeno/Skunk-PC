@@ -83,8 +83,24 @@ else
 fi
 echo ""
 
-# 5. Generación de Archivo ZPL de Prueba y Test de Impresión
-echo -e "${BOLD}[5. Prueba de Impresión Térmica en Lenguaje ZPL II / EPL2]${NC}"
+# 5. Generación de Archivo de Prueba (EPL2 y ZPL) y Test de Impresión
+echo -e "${BOLD}[5. Prueba de Impresión Térmica en Lenguaje EPL2 / ZPL II]${NC}"
+
+TEST_EPL="test_label.epl"
+cat << 'EOF_EPL' > "$TEST_EPL"
+
+N
+q609
+Q914,24
+A50,50,0,4,1,1,N,"PROYECTO SKUNK PC"
+A50,130,0,3,1,1,N,"Servidor CUPS + Avahi / Proxmox"
+A50,190,0,3,1,1,N,"Impresora: Zebra TLP2844 (EPL2)"
+A50,260,0,3,1,1,N,"Protocolo: IPP / AirPrint / Mopria"
+B50,330,0,1,2,6,100,B,"SKUNK-PC-ANDROID-OK"
+A50,470,0,3,1,1,N,"Fecha: Test Diagnostico Exitoso"
+P1
+
+EOF_EPL
 
 TEST_ZPL="test_label.zpl"
 cat << 'EOF_ZPL' > "$TEST_ZPL"
@@ -94,7 +110,7 @@ cat << 'EOF_ZPL' > "$TEST_ZPL"
 ^FO50,50^A0N,50,50^FDPROYECTO SKUNK PC^FS
 ^FO50,120^GB500,4,4^FS
 ^FO50,150^A0N,30,30^FDServidor CUPS + Avahi^FS
-^FO50,200^A0N,25,25^FDImpresora: Zebra GC420t^FS
+^FO50,200^A0N,25,25^FDImpresora: Zebra GC420t / TLP2844^FS
 ^FO50,240^A0N,25,25^FDProtocolo: IPP / AirPrint / Mopria^FS
 ^FO50,300^BY3,2,100
 ^FO50,300^BCN,100,Y,N,N
@@ -103,14 +119,14 @@ cat << 'EOF_ZPL' > "$TEST_ZPL"
 ^XZ
 EOF_ZPL
 
-log_success "Archivo de prueba de etiqueta térmica generado: ${BOLD}${TEST_ZPL}${NC}"
+log_success "Archivos de prueba térmicos generados: ${BOLD}${TEST_EPL}${NC} (EPL2) y ${BOLD}${TEST_ZPL}${NC} (ZPL)"
 echo ""
 
 # Obtener lista de impresoras para enviar prueba
 mapfile -t PRINTER_LIST < <(lpstat -p 2>/dev/null | awk '{print $2}' || true)
 
 if [ ${#PRINTER_LIST[@]} -gt 0 ]; then
-    echo -e "¿Deseas enviar ahora la etiqueta ZPL de prueba a alguna de las colas activas?"
+    echo -e "¿Deseas enviar ahora la etiqueta de prueba a alguna de las colas activas?"
     for i in "${!PRINTER_LIST[@]}"; do
         echo -e "  [$((i+1))] ${BOLD}${PRINTER_LIST[$i]}${NC}"
     done
@@ -120,14 +136,16 @@ if [ ${#PRINTER_LIST[@]} -gt 0 ]; then
     
     if [[ "$SEL_PRINTER" =~ ^[0-9]+$ ]] && [ "$SEL_PRINTER" -gt 0 ] && [ "$SEL_PRINTER" -le ${#PRINTER_LIST[@]} ]; then
         TARGET="${PRINTER_LIST[$((SEL_PRINTER-1))]}"
-        log_info "Enviando etiqueta ${TEST_ZPL} en modo raw a la cola '${TARGET}'..."
-        if lp -d "$TARGET" -o raw "$TEST_ZPL" 2>/dev/null; then
-            log_success "Trabajo enviado a la impresora '${TARGET}'. Verifica si salió la etiqueta."
+        log_info "Enviando etiqueta EPL2 (${TEST_EPL}) nativa a la cola '${TARGET}'..."
+        if lp -d "$TARGET" -o raw "$TEST_EPL" 2>/dev/null; then
+            log_success "Trabajo EPL2 enviado a la impresora '${TARGET}'. Verifica si salió la etiqueta."
+            # Enviar también ZPL por si es una impresora dual
+            lp -d "$TARGET" -o raw "$TEST_ZPL" 2>/dev/null || true
         else
             log_error "Fallo al enviar el trabajo. Verifica si la impresora está encendida o pausada: lpstat -p ${TARGET}"
         fi
     else
-        log_info "Omitiendo envío de prueba ZPL."
+        log_info "Omitiendo envío de prueba."
     fi
 else
     log_warn "No hay colas de impresión configuradas para enviar prueba. Ejecuta el Paso 3 primero."
