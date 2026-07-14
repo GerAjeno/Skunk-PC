@@ -50,6 +50,7 @@ El repositorio cuenta con un panel unificado y 4 scripts modulares secuenciales 
 | `backup_restore.sh` | **Herramienta 13:** Módulo de recuperación ante desastres que empaqueta o restaura en `.tar.gz` todas las colas CUPS, PPDs y políticas para clonar servidores en segundos. |
 | `tune_mdns.sh` | **Herramienta 14:** Afinamiento extremo de latencia mDNS/ZeroConf (`host-name-ttl=60`, rlimits, intervals) para que Android descubra impresoras en Wi-Fi en `< 1 segundo`. |
 | `setup_webui.sh` (`skunk_webui.py`) | **Herramienta 15 (⭐ Web UI Dashboard):** Portal Web de Gestión en Flask (`http://IP_SERVIDOR:8080`) protegido por contraseña de seguridad (`Lasgarzas911`), con temas dinámicos **AMOLED Oscuro (#000000)** y **Modo Claro**, descarga/importación visual de respaldos con 1 Clic, calibración de sensores y pruebas térmicas EPL2/ZPL. |
+| `delete_printer.sh` | **Herramienta 16:** Módulo interactivo de desinstalación de impresoras para eliminar colas de CUPS (`lpadmin -x`) de manera limpia y segura. |
 | `TROUBLESHOOTING.md` | **Manual de Depuración:** Guía completa con soluciones a problemas comunes de subred, aislamiento Wi-Fi y políticas en móviles Android. |
 | `PROXMOX_LXC_SETUP.md` | **Guía de Proxmox VE:** Instrucciones exactas para configurar red (bridge L2) y pasarela USB (Passthrough) hacia un Contenedor LXC Ubuntu Server. |
 

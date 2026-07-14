@@ -51,9 +51,10 @@ while true; do
     echo -e "  ${BOLD}[13] Módulo de Copia de Seguridad y Restauración (Clonado)${NC} (${YELLOW}backup_restore.sh${NC})"
     echo -e "  ${BOLD}[14] Afinamiento de Latencia mDNS para Detección Android <1s${NC} (${YELLOW}tune_mdns.sh${NC})"
     echo -e "  ${BOLD}[15] ⭐ Activar Interfaz Web de Gestión en Puerto 8080${NC} (${GREEN}setup_webui.sh${NC})"
+    echo -e "  ${BOLD}[16] 🗑️  Eliminar / Desinstalar una Impresora de CUPS${NC} (${RED}delete_printer.sh${NC})"
     echo -e "  ${BOLD}[0] Salir${NC}"
     echo -e "${CYAN}==============================================================================${NC}"
-    read -p "Selecciona una opción [0-15]: " OPT
+    read -p "Selecciona una opción [0-16]: " OPT
 
     case "$OPT" in
         1) bash "${BASE_DIR}/setup_printserver.sh"; read -p "Presiona ENTER para volver al menú..." || true ;;
@@ -84,6 +85,7 @@ while true; do
         13) bash "${BASE_DIR}/backup_restore.sh"; read -p "Presiona ENTER para volver al menú..." || true ;;
         14) bash "${BASE_DIR}/tune_mdns.sh"; read -p "Presiona ENTER para volver al menú..." || true ;;
         15) bash "${BASE_DIR}/setup_webui.sh"; read -p "Presiona ENTER para volver al menú..." || true ;;
+        16) bash "${BASE_DIR}/delete_printer.sh"; read -p "Presiona ENTER para volver al menú..." || true ;;
         0)
             echo -e "${GREEN}¡Hasta pronto! Skunk PC en línea.${NC}"
             exit 0

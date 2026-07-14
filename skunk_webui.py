@@ -672,10 +672,15 @@ HTML_TEMPLATE = """
         }
 
         async function deleteQueue(printer) {
-            if (!confirm(`¿Estás seguro de eliminar la cola '${printer}' de CUPS?`)) return;
-            const res = await fetch(`/api/delete/${printer}`, { method: 'DELETE' });
-            const data = await res.json();
-            location.reload();
+            if (!confirm(`⚠️ ¿Estás completamente seguro de ELIMINAR la impresora '${printer}' del servidor CUPS?`)) return;
+            try {
+                const res = await fetch(`/api/delete/${printer}`, { method: 'POST' });
+                const data = await res.json();
+                alert(data.msg);
+                if (data.ok) location.reload();
+            } catch (e) {
+                alert("Error de conexión al intentar eliminar la impresora.");
+            }
         }
 
         async function submitAddPrinter() {
@@ -814,10 +819,10 @@ def api_reset(printer):
     run_cmd(["lpadmin", "-p", printer, "-o", "printer-error-policy=retry-job", "-E"])
     return jsonify({"ok": True, "msg": f"Cola {printer} reactivada y errores limpiados."})
 
-@app.route("/api/delete/<printer>", methods=["DELETE"])
+@app.route("/api/delete/<printer>", methods=["DELETE", "POST"])
 def api_delete(printer):
     run_cmd(["lpadmin", "-x", printer])
-    return jsonify({"ok": True, "msg": f"Impresora {printer} eliminada de CUPS."})
+    return jsonify({"ok": True, "msg": f"✔ Impresora '{printer}' eliminada exitosamente del servidor."})
 
 @app.route("/api/add", methods=["POST"])
 def api_add():
