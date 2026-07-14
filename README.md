@@ -45,6 +45,7 @@ El repositorio cuenta con un panel unificado y 4 scripts modulares secuenciales 
 | `change_network.sh` | **Herramienta 6:** Modificar dinámicamente la subred o IP de producción permitida en `cupsd.conf` cuando el servidor cambie de red. |
 | `configure_labels.sh` | **Herramienta 7:** Configurar tamaño exacto de etiquetas térmicas (4x6", 2x1", mm) y modo térmico directo/transferencia. |
 | `test_center.sh` | **Herramienta 8:** Centro interactivo de pruebas ZPL, códigos de barras, página nativa CUPS y calibración automática de sensor. |
+| `fix_tlp2844.sh` | **Herramienta 9:** Diagnóstico profundo, reparación de permisos kernel/USB y pruebas hardware directas por cable en lenguaje **EPL2** para Zebra TLP2844. |
 | `TROUBLESHOOTING.md` | **Manual de Depuración:** Guía completa con soluciones a problemas comunes de subred, aislamiento Wi-Fi y políticas en móviles Android. |
 | `PROXMOX_LXC_SETUP.md` | **Guía de Proxmox VE:** Instrucciones exactas para configurar red (bridge L2) y pasarela USB (Passthrough) hacia un Contenedor LXC Ubuntu Server. |
 
@@ -52,7 +53,7 @@ El repositorio cuenta con un panel unificado y 4 scripts modulares secuenciales 
 
 ## 🚀 Guía Rápida de Instalación en el PC Final
 
-Una vez que tengas el PC con Linux en planta o almacén, simplemente abre una terminal y ejecuta:
+Una vez que tengas el PC con Linux en planta o almacén (o en Proxmox), simplemente abre una terminal y ejecuta:
 
 ### 1. Clonar el Repositorio
 ```bash
@@ -64,25 +65,44 @@ cd Skunk-PC
 ```bash
 sudo ./skunk_manager.sh
 ```
-Desde este panel podrás ejecutar en orden los pasos **[1] -> [2] -> [3] -> [4]** con un solo clic o comando.
-
-### Alternativa: Ejecución Manual Paso a Paso
-Si prefieres ejecutar los scripts individualmente por terminal:
-```bash
-sudo ./setup_printserver.sh
-sudo ./configure_cups_network.sh
-sudo ./add_zebra_printers.sh
-sudo ./diagnose_printserver.sh
-```
+Desde este panel podrás ejecutar en orden los pasos **[1] -> [2] -> [3] -> [4]** y acceder a todas las herramientas avanzadas de planta (cambio de red, renombramiento, calibración de etiquetas, etc.).
 
 ---
 
-## 🔬 Verificación de Conectividad con Smartphones Android
-1. Conecta el teléfono Android a la **misma red Wi-Fi** que el servidor Skunk PC.
-2. Abre Google Chrome en Android o cualquier aplicación compatible.
-3. Presiona **Compartir -> Imprimir**.
-4. En el selector de impresoras, verás aparecer automáticamente las colas del servidor (por ejemplo: `Zebra_GC420t_Caja_1 @ Skunk-PC`) con el icono de impresora en red.
-5. ¡Presiona **Imprimir** y retira tu etiqueta térmica!
+## 📱 Guía Completa: Cómo Imprimir desde Teléfonos Android por Wi-Fi
+
+El servidor Skunk PC traduce al instante imágenes y documentos de Android en comandos térmicos nativos (**EPL2** a 203 DPI para TLP2844 / **ZPL II** para GC420t). Para imprimir desde los teléfonos en planta:
+
+### 📶 Requisito Previo (Red Wi-Fi)
+El teléfono Android debe estar conectado a la **misma red Wi-Fi o subred LAN** en la que está conectado el servidor Proxmox / Skunk PC.
+
+---
+
+### ⭐ Método 1: Impresión Nativa de Android (Sin Instalar Ninguna App)
+En teléfonos Android modernos (Android 9 hasta 15):
+1. Abre **Google Chrome**, tu archivo PDF o tu sistema web corporativo.
+2. Toca el menú de **tres puntos (`⋮`)** arriba a la derecha y presiona **Imprimir (`Print`)** (o Compartir -> Imprimir).
+3. En la parte superior, toca el menú desplegable **"Seleccionar impresora"**.
+4. El sistema descubrirá por **mDNS/ZeroConf** tu impresora (por ejemplo: **`Zebra_TLP2844 @ Skunk-PC`**). Toca sobre ella.
+5. Ajusta el tamaño de papel (ej. `100x150mm`) en las opciones de flecha desplegable si es necesario.
+6. Toca el botón amarillo/verde de **IMPRIMIR**. ¡La etiqueta saldrá impresa en menos de 1 segundo!
+
+---
+
+### ⭐ Método 2: Mopria Print Service (Recomendado para Operación Industrial Continua)
+Si manejas teléfonos Android de diferentes marcas (Xiaomi, Samsung, Motorola), modelos antiguos o deseas una detección IPP de grado industrial ultrarrápida:
+1. Instala gratis en el teléfono desde la Google Play Store la aplicación oficial: **[Mopria Print Service](https://play.google.com/store/apps/details?id=org.mopria.printplugin)**.
+2. Abre la app una sola vez y asegúrate de que el servicio esté **Activado (`ON`)**.
+3. Al pulsar **Imprimir** en Chrome o cualquier aplicación web, Mopria gestionará y mantendrá la conexión directa y estable con Skunk PC.
+
+---
+
+### 💡 Tip para Desarrolladores de Apps Web / WMS en Chrome
+Si tu empresa desarrolla la aplicación web de almacén en HTML/JS, para evitar que el operario tenga que abrir los menús de Chrome, puedes enlazar un botón *"Imprimir Etiqueta"* con una sola línea de JavaScript:
+```javascript
+window.print();
+```
+¡Esto abrirá la ventana de impresión nativa de Android con la impresora Zebra preseleccionada y lista para confirmar con un toque!
 
 ---
 
