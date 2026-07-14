@@ -12,9 +12,13 @@ import subprocess
 import re
 import socket
 import json
-from flask import Flask, render_template_string, request, jsonify, send_file
+from flask import Flask, render_template_string, request, jsonify, send_file, session, redirect, url_for
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SKUNK_SECRET_KEY", "SkunkPC_SuperSecret_2026_Key_Secure")
+
+# Contraseña de acceso al portal Web UI (Predeterminada: Lasgarzas911)
+ADMIN_PASSWORD = os.environ.get("SKUNK_WEBUI_PASSWORD", "Lasgarzas911")
 
 # Directorio base y de respaldos
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -105,6 +109,109 @@ def get_usb_devices():
                 uri = line.replace("direct ", "").strip()
                 usb_list.append(uri)
     return usb_list
+
+LOGIN_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso Seguro - Skunk PC Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0b1120;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --border: rgba(255, 255, 255, 0.1);
+            --primary: #38bdf8;
+            --danger: #f43f5e;
+            --text: #f8fafc;
+            --subtext: #94a3b8;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top right, #1e1b4b, var(--bg) 70%);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+        .login-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+        .logo-icon { font-size: 3rem; margin-bottom: 1rem; display: inline-block; }
+        h2 { font-family: 'Outfit', sans-serif; font-size: 1.6rem; margin-bottom: 0.5rem; color: #fff; }
+        p { color: var(--subtext); font-size: 0.9rem; margin-bottom: 2rem; }
+        .form-group { margin-bottom: 1.5rem; text-align: left; }
+        label { display: block; font-size: 0.85rem; color: var(--subtext); margin-bottom: 8px; font-weight: 500; }
+        input[type="password"] {
+            width: 100%;
+            padding: 14px;
+            background: #0f172a;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        input[type="password"]:focus { outline: none; border-color: var(--primary); }
+        .btn-submit {
+            background: linear-gradient(135deg, var(--primary), #0284c7);
+            color: #0b1120;
+            font-weight: 700;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            width: 100%;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Outfit', sans-serif;
+        }
+        .btn-submit:hover { filter: brightness(1.15); transform: translateY(-2px); }
+        .error-msg {
+            background: rgba(244, 63, 94, 0.15);
+            border: 1px solid rgba(244, 63, 94, 0.3);
+            color: var(--danger);
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            margin-bottom: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <span class="logo-icon">🔒</span>
+        <h2>Skunk PC Print Server</h2>
+        <p>Introduce la contraseña de seguridad para administrar las colas de impresión de la nave.</p>
+        {% if error %}
+        <div class="error-msg">❌ {{ error }}</div>
+        {% endif %}
+        <form method="POST" action="/login">
+            <div class="form-group">
+                <label>Contraseña de Acceso al Portal</label>
+                <input type="password" name="password" placeholder="••••••••••••" required autofocus>
+            </div>
+            <button type="submit" class="btn-submit">Entrar al Portal</button>
+        </form>
+    </div>
+</body>
+</html>
+"""
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -287,9 +394,10 @@ HTML_TEMPLATE = """
                 <p style="color: var(--subtext); font-size: 0.85rem;">Universal mDNS / AirPrint / Mopria Industrial Gateway</p>
             </div>
         </div>
-        <div>
+        <div style="display: flex; align-items: center; gap: 10px;">
             <span class="status-badge" id="cups-badge">● CUPS: {{ status.cups.upper() }}</span>
             <span class="status-badge" id="avahi-badge">● mDNS: {{ status.avahi.upper() }}</span>
+            <a href="/logout" class="btn btn-outline" style="padding: 6px 14px; font-size: 0.85rem; text-decoration: none;">🚪 Salir</a>
         </div>
     </header>
 
@@ -546,6 +654,32 @@ HTML_TEMPLATE = """
 </body>
 </html>
 """
+
+@app.before_request
+def require_login():
+    if request.path.startswith("/static") or request.path in ["/login", "/logout"]:
+        return
+    if not session.get("authenticated"):
+        if request.path.startswith("/api/"):
+            return jsonify({"ok": False, "msg": "Sesión no autenticada o expirada. Por favor ingresa al portal."}), 401
+        return redirect(url_for("login"))
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = None
+    if request.method == "POST":
+        pwd = request.form.get("password", "")
+        if pwd == ADMIN_PASSWORD:
+            session["authenticated"] = True
+            return redirect(url_for("index"))
+        else:
+            error = "Contraseña incorrecta. Inténtalo nuevamente."
+    return render_template_string(LOGIN_TEMPLATE, error=error)
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 @app.route("/")
 def index():
