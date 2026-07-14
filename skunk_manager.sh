@@ -43,13 +43,17 @@ while true; do
     echo -e "  ${BOLD}[7] Configurar Tamaño y Tipo de Etiquetas Térmicas${NC} (${GREEN}configure_labels.sh${NC})"
     echo -e "  ${BOLD}[8] Centro de Pruebas de Impresión y Calibración${NC} (${GREEN}test_center.sh${NC})"
     echo -e "${CYAN}------------------------------------------------------------------------------${NC}"
-    echo -e "  ${BOLD}ℹ️  CONSULTA Y DIAGNÓSTICO:${NC}"
+    echo -e "  ${BOLD}ℹ️  CONSULTA, DIAGNÓSTICO E INGENIERÍA ADVANCED:${NC}"
     echo -e "  ${BOLD}[9] Ver Estado en Tiempo Real de Colas y Trabajos${NC} (${CYAN}lpstat -r -p -d -v${NC})"
     echo -e "  ${BOLD}[10] Consultar Guía de Depuración${NC} (${CYAN}TROUBLESHOOTING.md${NC})"
     echo -e "  ${BOLD}[11] Diagnóstico Profundo, Permisos y Test Hardware TLP2844${NC} (${CYAN}fix_tlp2844.sh${NC})"
+    echo -e "  ${BOLD}[12] Activar Demonio Watchdog de Auto-Recuperación de Colas${NC} (${YELLOW}setup_watchdog.sh${NC})"
+    echo -e "  ${BOLD}[13] Módulo de Copia de Seguridad y Restauración (Clonado)${NC} (${YELLOW}backup_restore.sh${NC})"
+    echo -e "  ${BOLD}[14] Afinamiento de Latencia mDNS para Detección Android <1s${NC} (${YELLOW}tune_mdns.sh${NC})"
+    echo -e "  ${BOLD}[15] ⭐ Activar Interfaz Web de Gestión en Puerto 8080${NC} (${GREEN}setup_webui.sh${NC})"
     echo -e "  ${BOLD}[0] Salir${NC}"
     echo -e "${CYAN}==============================================================================${NC}"
-    read -p "Selecciona una opción [0-11]: " OPT
+    read -p "Selecciona una opción [0-15]: " OPT
 
     case "$OPT" in
         1) bash "${BASE_DIR}/setup_printserver.sh"; read -p "Presiona ENTER para volver al menú..." || true ;;
@@ -76,6 +80,10 @@ while true; do
             fi
             ;;
         11) bash "${BASE_DIR}/fix_tlp2844.sh"; read -p "Presiona ENTER para volver al menú..." || true ;;
+        12) bash "${BASE_DIR}/setup_watchdog.sh"; read -p "Presiona ENTER para volver al menú..." || true ;;
+        13) bash "${BASE_DIR}/backup_restore.sh"; read -p "Presiona ENTER para volver al menú..." || true ;;
+        14) bash "${BASE_DIR}/tune_mdns.sh"; read -p "Presiona ENTER para volver al menú..." || true ;;
+        15) bash "${BASE_DIR}/setup_webui.sh"; read -p "Presiona ENTER para volver al menú..." || true ;;
         0)
             echo -e "${GREEN}¡Hasta pronto! Skunk PC en línea.${NC}"
             exit 0

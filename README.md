@@ -45,7 +45,11 @@ El repositorio cuenta con un panel unificado y 4 scripts modulares secuenciales 
 | `change_network.sh` | **Herramienta 6:** Modificar dinámicamente la subred o IP de producción permitida en `cupsd.conf` cuando el servidor cambie de red. |
 | `configure_labels.sh` | **Herramienta 7:** Configurar tamaño exacto de etiquetas térmicas (4x6", 2x1", mm) y modo térmico directo/transferencia. |
 | `test_center.sh` | **Herramienta 8:** Centro interactivo de pruebas ZPL, códigos de barras, página nativa CUPS y calibración automática de sensor. |
-| `fix_tlp2844.sh` | **Herramienta 9:** Diagnóstico profundo, reparación de permisos kernel/USB y pruebas hardware directas por cable en lenguaje **EPL2** para Zebra TLP2844. |
+| `fix_tlp2844.sh` | **Herramienta 11:** Diagnóstico profundo, reparación de permisos kernel/USB y pruebas hardware directas por cable en lenguaje **EPL2** para Zebra TLP2844. |
+| `setup_watchdog.sh` (`skunk_watchdog.sh`) | **Herramienta 12:** Demonio Systemd (`skunk-watchdog.timer`) que inspecciona cada 30s colas detenidas por papel o cables USB y las desatasca automáticamente (`cupsaccept/cupsenable`). |
+| `backup_restore.sh` | **Herramienta 13:** Módulo de recuperación ante desastres que empaqueta o restaura en `.tar.gz` todas las colas CUPS, PPDs y políticas para clonar servidores en segundos. |
+| `tune_mdns.sh` | **Herramienta 14:** Afinamiento extremo de latencia mDNS/ZeroConf (`host-name-ttl=60`, rlimits, intervals) para que Android descubra impresoras en Wi-Fi en `< 1 segundo`. |
+| `setup_webui.sh` (`skunk_webui.py`) | **Herramienta 15 (⭐ Web UI):** Portal Web de Gestión en Flask (`http://IP_SERVIDOR:8080`) con diseño moderno Dark Glassmorphism para administrar colas, añadir impresoras USB/Red, hacer pruebas y descargar respaldos visualmente desde un móvil o tablet. |
 | `TROUBLESHOOTING.md` | **Manual de Depuración:** Guía completa con soluciones a problemas comunes de subred, aislamiento Wi-Fi y políticas en móviles Android. |
 | `PROXMOX_LXC_SETUP.md` | **Guía de Proxmox VE:** Instrucciones exactas para configurar red (bridge L2) y pasarela USB (Passthrough) hacia un Contenedor LXC Ubuntu Server. |
 

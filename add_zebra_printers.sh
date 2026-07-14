@@ -110,9 +110,10 @@ echo -e "Selecciona el modo de instalación de las impresoras:"
 echo -e "  ${BOLD}[1] Automático:${NC} Registrar todas las impresoras USB detectadas (Zebra_GC420t_Caja_1, etc.)"
 echo -e "  ${BOLD}[2] Interactivo:${NC} Elegir qué impresora agregar y asignar nombre personalizado sin espacios"
 echo -e "  ${BOLD}[3] Emulación / Prueba (Simulación LAN):${NC} Crear una impresora virtual de prueba para verificar descubrimiento Android sin hardware"
-echo -e "  ${BOLD}[4] Salir${NC}"
+echo -e "  ${BOLD}[4] Impresora Zebra en Red Ethernet / IP (${GREEN}socket://IP:9100${NC}): Conectar una Zebra distante por red"
+echo -e "  ${BOLD}[5] Salir${NC}"
 echo ""
-read -p "Opción [1-4]: " OPTION
+read -p "Opción [1-5]: " OPTION
 
 case "${OPTION:-1}" in
     1)
@@ -157,6 +158,26 @@ case "${OPTION:-1}" in
         add_cups_printer "Zebra_GC420t_Simulada_Android" "file:///dev/null" "$PPD_MODEL" "Impresora Zebra Emulada para Prueba Android Wi-Fi"
         ;;
     4)
+        log_info "Configuración de Impresora Zebra de Red (Ethernet / JetDirect / Wi-Fi)..."
+        read -p "Introduce la dirección IP de la impresora en red (ej. 192.168.1.50): " NET_IP
+        if [[ -z "$NET_IP" ]]; then
+            log_error "Dirección IP vacía."
+            exit 1
+        fi
+        NET_URI="socket://${NET_IP}:9100"
+        
+        while true; do
+            read -p "Nombre para la cola en CUPS (sin espacios, ej. Zebra_Red_Zona1): " NET_NAME
+            if [[ "$NET_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+                break
+            else
+                log_error "El nombre solo puede contener letras, números, guiones y guiones bajos."
+            fi
+        done
+        
+        add_cups_printer "$NET_NAME" "$NET_URI" "$PPD_MODEL" "Zebra Red IP (${NET_IP})"
+        ;;
+    5)
         log_info "Saliendo sin realizar cambios adicionales."
         exit 0
         ;;

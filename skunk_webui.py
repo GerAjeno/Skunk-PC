@@ -1,0 +1,625 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# ==============================================================================
+# Proyecto: Skunk PC - Servidor de Impresión Universal (CUPS + Avahi / ZeroConf)
+# Archivo: skunk_webui.py
+# Descripción: Interfaz Web de Gestión Integral (Web UI Dashboard) basada en
+#              Flask para administrar colas, red, pruebas térmicas y respaldos.
+# ==============================================================================
+
+import os
+import subprocess
+import re
+import socket
+import json
+from flask import Flask, render_template_string, request, jsonify, send_file
+
+app = Flask(__name__)
+
+# Directorio base y de respaldos
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BACKUP_DIR = "/var/backups/skunk-pc"
+os.makedirs(BACKUP_DIR, exist_ok=True)
+
+def run_cmd(cmd_list):
+    try:
+        res = subprocess.run(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=15)
+        return res.returncode == 0, res.stdout.strip(), res.stderr.strip()
+    except Exception as e:
+        return False, "", str(e)
+
+def get_system_status():
+    cups_ok, _, _ = run_cmd(["systemctl", "is-active", "cups"])
+    avahi_ok, _, _ = run_cmd(["systemctl", "is-active", "avahi-daemon"])
+    watchdog_ok, _, _ = run_cmd(["systemctl", "is-active", "skunk-watchdog.timer"])
+    
+    # Obtener subredes en cupsd.conf
+    subnets = []
+    if os.path.exists("/etc/cups/cupsd.conf"):
+        with open("/etc/cups/cupsd.conf", "r") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("Allow ") and not line.startswith("Allow all"):
+                    sub = line.split("Allow ")[1].strip()
+                    if sub not in subnets and sub != "127.0.0.1":
+                        subnets.append(sub)
+                        
+    # Obtener IP local del servidor
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        server_ip = s.getsockname()[0]
+        s.close()
+    except:
+        server_ip = "127.0.0.1"
+        
+    return {
+        "cups": "running" if cups_ok else "stopped",
+        "avahi": "running" if avahi_ok else "stopped",
+        "watchdog": "active" if watchdog_ok else "inactive",
+        "server_ip": server_ip,
+        "subnets": subnets
+    }
+
+def get_printers():
+    ok, stdout, _ = run_cmd(["lpstat", "-v"])
+    printers = []
+    if not ok or not stdout:
+        return printers
+        
+    for line in stdout.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        # Ejemplo: device for Zebra_TLP2844: usb://Zebra/TLP2844...
+        parts = line.split(":")
+        if len(parts) >= 2 and line.startswith("device for "):
+            pname = parts[0].replace("device for ", "").strip()
+            uri = line.split(": ", 1)[1].strip() if ": " in line else parts[1].strip()
+            
+            # Obtener estado
+            s_ok, s_out, _ = run_cmd(["lpstat", "-p", pname])
+            status = "idle"
+            if "idle" in s_out.lower():
+                status = "idle"
+            elif "printing" in s_out.lower():
+                status = "printing"
+            elif "stopped" in s_out.lower() or "disabled" in s_out.lower():
+                status = "stopped"
+                
+            printers.append({
+                "name": pname,
+                "uri": uri,
+                "status": status,
+                "raw_status": s_out
+            })
+    return printers
+
+def get_usb_devices():
+    ok, stdout, _ = run_cmd(["lpinfo", "-v"])
+    usb_list = []
+    if ok and stdout:
+        for line in stdout.split("\n"):
+            line = line.strip()
+            if line.startswith("direct usb://"):
+                uri = line.replace("direct ", "").strip()
+                usb_list.append(uri)
+    return usb_list
+
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skunk PC - Enterprise Print Server Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0b1120;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --border: rgba(255, 255, 255, 0.1);
+            --primary: #38bdf8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #f43f5e;
+            --text: #f8fafc;
+            --subtext: #94a3b8;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top right, #1e1b4b, var(--bg) 70%);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        h1, h2, h3 { font-family: 'Outfit', sans-serif; }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 2rem;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo-icon {
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, var(--primary), var(--success));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .status-badge.stopped {
+            background: rgba(244, 63, 94, 0.15);
+            color: var(--danger);
+            border-color: rgba(244, 63, 94, 0.3);
+        }
+        .grid-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 2.5rem;
+        }
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .card:hover { transform: translateY(-3px); border-color: var(--primary); }
+        .card-title { font-size: 0.9rem; color: var(--subtext); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card-value { font-size: 1.6rem; font-weight: 700; color: #fff; display: flex; align-items: center; justify-content: space-between; }
+        
+        .section-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .btn {
+            background: var(--primary);
+            color: #0b1120;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+        .btn:hover { filter: brightness(1.15); transform: scale(1.02); }
+        .btn-success { background: var(--success); color: #fff; }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-warning { background: var(--warning); color: #000; }
+        .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+        .btn-outline:hover { background: rgba(255,255,255,0.05); }
+
+        .printer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        .printer-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 1.2rem;
+        }
+        .printer-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .printer-name { font-size: 1.25rem; font-weight: 700; color: var(--primary); font-family: 'Outfit', sans-serif; }
+        .printer-uri { font-size: 0.8rem; color: var(--subtext); word-break: break-all; margin-top: 4px; }
+        
+        .printer-actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .printer-actions .btn { font-size: 0.8rem; padding: 8px 10px; justify-content: center; }
+        .full-width { grid-column: span 2; }
+
+        modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(5px);
+            align-items: center; justify-content: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: #1e293b;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 520px;
+        }
+        .form-group { margin-bottom: 1.2rem; }
+        label { display: block; font-size: 0.85rem; color: var(--subtext); margin-bottom: 6px; }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            background: #0f172a;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 0.95rem;
+        }
+        .modal-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 1.8rem; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <span class="logo-icon">🖨️</span>
+            <div>
+                <h1>Skunk PC Print Server</h1>
+                <p style="color: var(--subtext); font-size: 0.85rem;">Universal mDNS / AirPrint / Mopria Industrial Gateway</p>
+            </div>
+        </div>
+        <div>
+            <span class="status-badge" id="cups-badge">● CUPS: {{ status.cups.upper() }}</span>
+            <span class="status-badge" id="avahi-badge">● mDNS: {{ status.avahi.upper() }}</span>
+        </div>
+    </header>
+
+    <!-- STATS -->
+    <div class="grid-stats">
+        <div class="card">
+            <div class="card-title">Impresoras Activas</div>
+            <div class="card-value">{{ printers|length }} <small style="font-size: 0.9rem; color: var(--success);">● Colas CUPS</small></div>
+        </div>
+        <div class="card">
+            <div class="card-title">Dirección IP en Planta</div>
+            <div class="card-value">{{ status.server_ip }} <small style="font-size: 0.85rem; color: var(--primary);">Puerto 631 / 8080</small></div>
+        </div>
+        <div class="card">
+            <div class="card-title">Watchdog de Auto-Recuperación</div>
+            <div class="card-value">
+                <span>{{ status.watchdog.upper() }}</span>
+                <button class="btn btn-outline" style="padding: 6px 12px; font-size: 0.75rem;" onclick="toggleWatchdog()">⚡ Cambiar</button>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">Respaldos & Desastres</div>
+            <div class="card-value">
+                <button class="btn btn-success" style="font-size: 0.85rem; width: 100%; justify-content: center;" onclick="backupSystem()">📦 Descargar Respaldo</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PRINTERS SECTION -->
+    <div class="section-title">
+        <h2>🖨️ Colas de Impresión & Calibración de Hardware</h2>
+        <button class="btn btn-success" onclick="openAddModal()">+ Añadir Impresora (USB o Red)</button>
+    </div>
+
+    <div class="printer-grid">
+        {% for p in printers %}
+        <div class="printer-card">
+            <div class="printer-header">
+                <div>
+                    <div class="printer-name">{{ p.name }}</div>
+                    <div class="printer-uri">{{ p.uri }}</div>
+                </div>
+                <span class="status-badge {% if p.status == 'stopped' %}stopped{% endif %}">
+                    {{ p.status.upper() }}
+                </span>
+            </div>
+            
+            <div class="printer-actions">
+                <button class="btn" onclick="sendTest('{{ p.name }}', 'epl')">🧪 Test EPL2</button>
+                <button class="btn" onclick="sendTest('{{ p.name }}', 'zpl')">🧪 Test ZPL II</button>
+                <button class="btn btn-outline" onclick="sendTest('{{ p.name }}', 'barcode')">🏷️ Cód. Barras</button>
+                <button class="btn btn-outline" onclick="calibrate('{{ p.name }}')">📏 Calibrar Sensor</button>
+                <button class="btn btn-warning" onclick="resetQueue('{{ p.name }}')">⚡ Desatascar</button>
+                <button class="btn btn-outline" onclick="openRenameModal('{{ p.name }}')">✏️ Renombrar</button>
+                <button class="btn btn-danger full-width" onclick="deleteQueue('{{ p.name }}')">🗑️ Eliminar Cola CUPS</button>
+            </div>
+        </div>
+        {% else %}
+        <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+            <p style="font-size: 1.1rem; color: var(--subtext);">No hay impresoras añadidas aún en el servidor.</p>
+            <button class="btn btn-success" style="margin-top: 1rem;" onclick="openAddModal()">+ Añadir Primera Impresora</button>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- ADD MODAL -->
+    <div id="addModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(5px); z-index:1000; align-items:center; justify-content:center;">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 1.5rem;">+ Añadir Nueva Impresora Zebra</h3>
+            <div class="form-group">
+                <label>Nombre de la Cola (Sin espacios)</label>
+                <input type="text" id="addName" placeholder="Zebra_TLP2844_Caja1">
+            </div>
+            <div class="form-group">
+                <label>Tipo de Conexión</label>
+                <select id="connType" onchange="toggleConnField()">
+                    <option value="usb">Dispositivo Físico USB (Autodetectado)</option>
+                    <option value="net">Impresora en Red Ethernet / Wi-Fi (IP)</option>
+                </select>
+            </div>
+            <div class="form-group" id="usbField">
+                <label>Puerto USB Detectado (`lpinfo -v`)</label>
+                <select id="usbUri">
+                    {% for u in usb_devices %}
+                    <option value="{{ u }}">{{ u }}</option>
+                    {% else %}
+                    <option value="">No se encontraron dispositivos USB en este instante</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" id="netField" style="display:none;">
+                <label>Dirección IP de la Impresora de Red (`socket://`)</label>
+                <input type="text" id="netIp" placeholder="192.168.1.50">
+            </div>
+            <div class="form-group">
+                <label>Controlador PPD y Lenguaje Nativo</label>
+                <select id="driverModel">
+                    <option value="drv:///sample.drv/zebraep2.ppd">Zebra EPL2 Label Printer (Nativo TLP2844 / LP2844)</option>
+                    <option value="drv:///sample.drv/zebra.ppd">Zebra ZPL Label Printer (Nativo GC420t / ZD420)</option>
+                    <option value="raw">Raw Queue (Sin filtro de sistema - Solo envíos directos)</option>
+                </select>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-outline" onclick="closeModal('addModal')">Cancelar</button>
+                <button class="btn btn-success" onclick="submitAddPrinter()">Guardar Impresora</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- RENAME MODAL -->
+    <div id="renameModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(5px); z-index:1000; align-items:center; justify-content:center;">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 1.5rem;">✏️ Renombrar Impresora</h3>
+            <input type="hidden" id="oldName">
+            <div class="form-group">
+                <label>Nuevo Nombre para la Cola CUPS</label>
+                <input type="text" id="newName" placeholder="Zebra_Almacen_Norte">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-outline" onclick="closeModal('renameModal')">Cancelar</button>
+                <button class="btn btn-primary" onclick="submitRename()">Renombrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openAddModal() { document.getElementById('addModal').style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        function openRenameModal(name) {
+            document.getElementById('oldName').value = name;
+            document.getElementById('newName').value = name;
+            document.getElementById('renameModal').style.display = 'flex';
+        }
+        function toggleConnField() {
+            const val = document.getElementById('connType').value;
+            document.getElementById('usbField').style.display = (val === 'usb') ? 'block' : 'none';
+            document.getElementById('netField').style.display = (val === 'net') ? 'block' : 'none';
+        }
+
+        async function sendTest(printer, type) {
+            const res = await fetch(`/api/test/${printer}?type=${type}`, { method: 'POST' });
+            const data = await res.json();
+            alert(data.msg);
+        }
+
+        async function calibrate(printer) {
+            if (!confirm(`¿Fuerzar calibración de sensor en ${printer}? La impresora expulsará 2 o 3 etiquetas en blanco.`)) return;
+            const res = await fetch(`/api/calibrate/${printer}`, { method: 'POST' });
+            const data = await res.json();
+            alert(data.msg);
+        }
+
+        async function resetQueue(printer) {
+            const res = await fetch(`/api/reset/${printer}`, { method: 'POST' });
+            const data = await res.json();
+            alert(data.msg);
+            location.reload();
+        }
+
+        async function deleteQueue(printer) {
+            if (!confirm(`¿Estás seguro de eliminar la cola '${printer}' de CUPS?`)) return;
+            const res = await fetch(`/api/delete/${printer}`, { method: 'DELETE' });
+            const data = await res.json();
+            location.reload();
+        }
+
+        async function submitAddPrinter() {
+            const name = document.getElementById('addName').value.trim();
+            const connType = document.getElementById('connType').value;
+            const driver = document.getElementById('driverModel').value;
+            let uri = "";
+            
+            if (connType === 'usb') {
+                uri = document.getElementById('usbUri').value;
+            } else {
+                const ip = document.getElementById('netIp').value.trim();
+                uri = `socket://${ip}:9100`;
+            }
+            
+            if (!name || !uri) { alert("Nombre y URI o IP son obligatorios"); return; }
+            
+            const res = await fetch('/api/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, uri, driver })
+            });
+            const data = await res.json();
+            if (data.ok) location.reload(); else alert(data.msg);
+        }
+
+        async function submitRename() {
+            const old_name = document.getElementById('oldName').value;
+            const new_name = document.getElementById('newName').value.trim();
+            if (!new_name) return;
+            
+            const res = await fetch('/api/rename', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ old_name, new_name })
+            });
+            const data = await res.json();
+            if (data.ok) location.reload(); else alert(data.msg);
+        }
+
+        async function toggleWatchdog() {
+            await fetch('/api/toggle_watchdog', { method: 'POST' });
+            location.reload();
+        }
+
+        function backupSystem() {
+            window.location.href = '/api/backup';
+        }
+    </script>
+</body>
+</html>
+"""
+
+@app.route("/")
+def index():
+    status = get_system_status()
+    printers = get_printers()
+    usb_devices = get_usb_devices()
+    return render_template_string(HTML_TEMPLATE, status=status, printers=printers, usb_devices=usb_devices)
+
+@app.route("/api/test/<printer>", methods=["POST"])
+def api_test(printer):
+    t = request.args.get("type", "epl")
+    if t == "epl":
+        payload = '\nN\nq609\nQ914,24\nA50,50,0,4,1,1,N,"PRUEBA WEB UI - EPL2 OK"\nA50,130,0,3,1,1,N,"Servidor: Ubuntu / Proxmox"\nA50,190,0,3,1,1,N,"Impresora: Zebra TLP2844 OK"\nP1\n'
+    elif t == "zpl":
+        payload = '^XA^PW609^LL914^FO50,50^A0N,45,45^FDPRUEBA WEB UI - ZPL OK^FS^FO50,130^A0N,30,30^FDTLP2844 / GC420t OK^FS^XZ'
+    else:
+        payload = '\nN\nq609\nQ914,24\nA60,60,0,4,1,1,N,"CODIGO BARRAS SKUNK"\nB60,130,0,1,2,6,100,B,"SKUNK-WEBUI-2026"\nP1\n'
+        
+    p = subprocess.Popen(["lp", "-d", printer, "-o", "raw"], stdin=subprocess.PIPE, text=True)
+    p.communicate(input=payload)
+    return jsonify({"ok": p.returncode == 0, "msg": f"Prueba '{t.upper()}' enviada a {printer}."})
+
+@app.route("/api/calibrate/<printer>", methods=["POST"])
+def api_calibrate(printer):
+    p1 = subprocess.Popen(["lp", "-d", printer, "-o", "raw"], stdin=subprocess.PIPE, text=True)
+    p1.communicate(input="\njc\n")
+    p2 = subprocess.Popen(["lp", "-d", printer, "-o", "raw"], stdin=subprocess.PIPE, text=True)
+    p2.communicate(input="~JC\n^XA^JUS^XZ")
+    return jsonify({"ok": True, "msg": f"Orden de calibración física (jc/~JC) enviada a {printer}."})
+
+@app.route("/api/reset/<printer>", methods=["POST"])
+def api_reset(printer):
+    run_cmd(["cupsaccept", printer])
+    run_cmd(["cupsenable", printer])
+    run_cmd(["lpadmin", "-p", printer, "-o", "printer-error-policy=retry-job", "-E"])
+    return jsonify({"ok": True, "msg": f"Cola {printer} reactivada y errores limpiados."})
+
+@app.route("/api/delete/<printer>", methods=["DELETE"])
+def api_delete(printer):
+    run_cmd(["lpadmin", "-x", printer])
+    return jsonify({"ok": True, "msg": f"Impresora {printer} eliminada de CUPS."})
+
+@app.route("/api/add", methods=["POST"])
+def api_add():
+    data = request.json
+    name = data.get("name", "").strip()
+    uri = data.get("uri", "").strip()
+    driver = data.get("driver", "drv:///sample.drv/zebraep2.ppd")
+    
+    if not name or not uri:
+        return jsonify({"ok": False, "msg": "Nombre y URI requeridos."})
+        
+    cmd = ["lpadmin", "-p", name, "-v", uri, "-E", "-o", "printer-is-shared=true", "-D", f"Zebra ({name})", "-L", "Almacén Skunk-PC"]
+    if driver != "raw":
+        cmd += ["-m", driver]
+    else:
+        cmd += ["-o", "raw"]
+        
+    ok, stdout, stderr = run_cmd(cmd)
+    if not ok and driver != "raw":
+        # Reintento con raw si falla el PPD
+        cmd_raw = ["lpadmin", "-p", name, "-v", uri, "-E", "-o", "raw", "-o", "printer-is-shared=true", "-D", f"Zebra ({name})", "-L", "Almacén Skunk-PC"]
+        ok, stdout, stderr = run_cmd(cmd_raw)
+        
+    if ok:
+        run_cmd(["cupsaccept", name])
+        run_cmd(["cupsenable", name])
+        return jsonify({"ok": True, "msg": f"Impresora {name} creada."})
+    else:
+        return jsonify({"ok": False, "msg": f"Error al crear impresora: {stderr}"})
+
+@app.route("/api/rename", methods=["POST"])
+def api_rename():
+    data = request.json
+    old_name = data.get("old_name", "").strip()
+    new_name = data.get("new_name", "").strip()
+    
+    ok, stdout, _ = run_cmd(["lpstat", "-v", old_name])
+    if not ok or not stdout:
+        return jsonify({"ok": False, "msg": "Impresora origen no existe."})
+        
+    uri = stdout.split(": ", 1)[1].strip() if ": " in stdout else stdout.split()[2].strip()
+    
+    # Crear nueva, copiar política y borrar anterior
+    run_cmd(["lpadmin", "-p", new_name, "-v", uri, "-E", "-o", "printer-is-shared=true", "-D", f"Zebra ({new_name})", "-L", "Almacén Skunk-PC"])
+    run_cmd(["cupsaccept", new_name])
+    run_cmd(["cupsenable", new_name])
+    run_cmd(["lpadmin", "-x", old_name])
+    return jsonify({"ok": True, "msg": f"Renombrado a {new_name} exitoso."})
+
+@app.route("/api/toggle_watchdog", methods=["POST"])
+def api_toggle_watchdog():
+    ok, _, _ = run_cmd(["systemctl", "is-active", "skunk-watchdog.timer"])
+    if ok:
+        run_cmd(["systemctl", "disable", "--now", "skunk-watchdog.timer"])
+    else:
+        run_cmd(["systemctl", "enable", "--now", "skunk-watchdog.timer"])
+        run_cmd(["systemctl", "start", "skunk-watchdog.service"])
+    return jsonify({"ok": True})
+
+@app.route("/api/backup", methods=["GET"])
+def api_backup():
+    import tarfile
+    from datetime import datetime
+    
+    fname = f"skunk_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.tar.gz"
+    fpath = os.path.join(BACKUP_DIR, fname)
+    
+    with tarfile.open(fpath, "w:gz") as tar:
+        for p in ["/etc/cups/printers.conf", "/etc/cups/cupsd.conf", "/etc/cups/ppd", "/etc/avahi/avahi-daemon.conf"]:
+            if os.path.exists(p):
+                tar.add(p, arcname=p.lstrip("/"))
+                
+    return send_file(fpath, as_attachment=True, download_name=fname)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080, debug=False)
