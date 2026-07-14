@@ -120,26 +120,61 @@ LOGIN_TEMPLATE = """
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        (function() {
+            const saved = localStorage.getItem('skunk_theme') || 'amoled';
+            document.documentElement.setAttribute('data-theme', saved);
+        })();
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'light' ? 'amoled' : 'light';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('skunk_theme', next);
+            updateThemeBtn();
+        }
+        function updateThemeBtn() {
+            const btn = document.getElementById('theme-toggle-btn');
+            if (btn) {
+                const current = document.documentElement.getAttribute('data-theme');
+                btn.innerHTML = current === 'light' ? '🌑 AMOLED Oscuro' : '☀️ Modo Claro';
+            }
+        }
+        window.addEventListener('DOMContentLoaded', updateThemeBtn);
+    </script>
     <style>
-        :root {
-            --bg: #0b1120;
-            --card-bg: rgba(30, 41, 59, 0.7);
-            --border: rgba(255, 255, 255, 0.1);
+        :root, [data-theme="amoled"] {
+            --bg: #000000;
+            --card-bg: rgba(18, 18, 18, 0.9);
+            --border: rgba(255, 255, 255, 0.15);
             --primary: #38bdf8;
             --danger: #f43f5e;
-            --text: #f8fafc;
-            --subtext: #94a3b8;
+            --text: #ffffff;
+            --subtext: #a1a1aa;
+            --grad-start: #0a0a0a;
+            --grad-end: #000000;
+        }
+        [data-theme="light"] {
+            --bg: #f8fafc;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --border: rgba(15, 23, 42, 0.15);
+            --primary: #0284c7;
+            --danger: #e11d48;
+            --text: #0f172a;
+            --subtext: #475569;
+            --grad-start: #e2e8f0;
+            --grad-end: #f8fafc;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Inter', sans-serif;
-            background: radial-gradient(circle at top right, #1e1b4b, var(--bg) 70%);
+            background: radial-gradient(circle at top right, var(--grad-start), var(--grad-end) 70%);
             color: var(--text);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 1.5rem;
+            transition: background 0.3s, color 0.3s;
         }
         .login-card {
             background: var(--card-bg);
@@ -151,19 +186,20 @@ LOGIN_TEMPLATE = """
             max-width: 440px;
             box-shadow: 0 20px 50px rgba(0,0,0,0.5);
             text-align: center;
+            transition: background 0.3s, border-color 0.3s;
         }
         .logo-icon { font-size: 3rem; margin-bottom: 1rem; display: inline-block; }
-        h2 { font-family: 'Outfit', sans-serif; font-size: 1.6rem; margin-bottom: 0.5rem; color: #fff; }
+        h2 { font-family: 'Outfit', sans-serif; font-size: 1.6rem; margin-bottom: 0.5rem; color: var(--text); }
         p { color: var(--subtext); font-size: 0.9rem; margin-bottom: 2rem; }
         .form-group { margin-bottom: 1.5rem; text-align: left; }
         label { display: block; font-size: 0.85rem; color: var(--subtext); margin-bottom: 8px; font-weight: 500; }
         input[type="password"] {
             width: 100%;
             padding: 14px;
-            background: #0f172a;
+            background: transparent;
             border: 1px solid var(--border);
             border-radius: 12px;
-            color: #fff;
+            color: var(--text);
             font-size: 1rem;
             transition: border-color 0.2s;
         }
@@ -191,6 +227,18 @@ LOGIN_TEMPLATE = """
             font-size: 0.85rem;
             margin-bottom: 1.5rem;
         }
+        .theme-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 16px;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            margin-top: 1.5rem;
+            transition: all 0.2s;
+        }
+        .theme-btn:hover { background: rgba(128,128,128,0.1); }
     </style>
 </head>
 <body>
@@ -208,6 +256,7 @@ LOGIN_TEMPLATE = """
             </div>
             <button type="submit" class="btn-submit">Entrar al Portal</button>
         </form>
+        <button type="button" id="theme-toggle-btn" onclick="toggleTheme()" class="theme-btn">☀️ Modo Claro</button>
     </div>
 </body>
 </html>
@@ -223,27 +272,64 @@ HTML_TEMPLATE = """
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        (function() {
+            const saved = localStorage.getItem('skunk_theme') || 'amoled';
+            document.documentElement.setAttribute('data-theme', saved);
+        })();
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'light' ? 'amoled' : 'light';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('skunk_theme', next);
+            updateThemeBtn();
+        }
+        function updateThemeBtn() {
+            const btn = document.getElementById('theme-toggle-btn');
+            if (btn) {
+                const current = document.documentElement.getAttribute('data-theme');
+                btn.innerHTML = current === 'light' ? '🌑 AMOLED Oscuro' : '☀️ Modo Claro';
+            }
+        }
+        window.addEventListener('DOMContentLoaded', updateThemeBtn);
+    </script>
     <style>
-        :root {
-            --bg: #0b1120;
-            --card-bg: rgba(30, 41, 59, 0.7);
-            --border: rgba(255, 255, 255, 0.1);
+        :root, [data-theme="amoled"] {
+            --bg: #000000;
+            --card-bg: rgba(18, 18, 18, 0.85);
+            --border: rgba(255, 255, 255, 0.15);
             --primary: #38bdf8;
             --success: #10b981;
             --warning: #f59e0b;
             --danger: #f43f5e;
-            --text: #f8fafc;
-            --subtext: #94a3b8;
+            --text: #ffffff;
+            --subtext: #a1a1aa;
+            --grad-start: #0a0a0a;
+            --grad-end: #000000;
+        }
+        [data-theme="light"] {
+            --bg: #f8fafc;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --border: rgba(15, 23, 42, 0.15);
+            --primary: #0284c7;
+            --success: #059669;
+            --warning: #d97706;
+            --danger: #e11d48;
+            --text: #0f172a;
+            --subtext: #475569;
+            --grad-start: #e2e8f0;
+            --grad-end: #f8fafc;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Inter', sans-serif;
-            background: radial-gradient(circle at top right, #1e1b4b, var(--bg) 70%);
+            background: radial-gradient(circle at top right, var(--grad-start), var(--grad-end) 70%);
             color: var(--text);
             min-height: 100vh;
             padding: 2rem;
+            transition: background 0.3s, color 0.3s;
         }
-        h1, h2, h3 { font-family: 'Outfit', sans-serif; }
+        h1, h2, h3 { font-family: 'Outfit', sans-serif; color: var(--text); }
         header {
             display: flex;
             justify-content: space-between;
@@ -293,11 +379,11 @@ HTML_TEMPLATE = """
             border-radius: 16px;
             padding: 1.5rem;
             box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-            transition: transform 0.2s, border-color 0.2s;
+            transition: transform 0.2s, border-color 0.2s, background 0.3s;
         }
         .card:hover { transform: translateY(-3px); border-color: var(--primary); }
         .card-title { font-size: 0.9rem; color: var(--subtext); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; }
-        .card-value { font-size: 1.6rem; font-weight: 700; color: #fff; display: flex; align-items: center; justify-content: space-between; }
+        .card-value { font-size: 1.6rem; font-weight: 700; color: var(--text); display: flex; align-items: center; justify-content: space-between; }
         
         .section-title {
             display: flex;
@@ -324,7 +410,7 @@ HTML_TEMPLATE = """
         .btn-danger { background: var(--danger); color: #fff; }
         .btn-warning { background: var(--warning); color: #000; }
         .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
-        .btn-outline:hover { background: rgba(255,255,255,0.05); }
+        .btn-outline:hover { background: rgba(128,128,128,0.1); }
 
         .printer-grid {
             display: grid;
@@ -341,6 +427,7 @@ HTML_TEMPLATE = """
             flex-direction: column;
             justify-content: space-between;
             gap: 1.2rem;
+            transition: background 0.3s, border-color 0.3s;
         }
         .printer-header { display: flex; justify-content: space-between; align-items: flex-start; }
         .printer-name { font-size: 1.25rem; font-weight: 700; color: var(--primary); font-family: 'Outfit', sans-serif; }
@@ -364,24 +451,27 @@ HTML_TEMPLATE = """
             z-index: 1000;
         }
         .modal-content {
-            background: #1e293b;
+            background: var(--card-bg);
             border: 1px solid var(--border);
             border-radius: 20px;
             padding: 2rem;
             width: 90%;
             max-width: 520px;
+            transition: background 0.3s, border-color 0.3s;
         }
         .form-group { margin-bottom: 1.2rem; }
         label { display: block; font-size: 0.85rem; color: var(--subtext); margin-bottom: 6px; }
         input, select {
             width: 100%;
             padding: 12px;
-            background: #0f172a;
+            background: transparent;
             border: 1px solid var(--border);
             border-radius: 10px;
-            color: #fff;
+            color: var(--text);
             font-size: 0.95rem;
         }
+        input:focus, select:focus { outline: none; border-color: var(--primary); }
+        select option { background: #0f172a; color: #fff; }
         .modal-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 1.8rem; }
     </style>
 </head>
@@ -394,9 +484,10 @@ HTML_TEMPLATE = """
                 <p style="color: var(--subtext); font-size: 0.85rem;">Universal mDNS / AirPrint / Mopria Industrial Gateway</p>
             </div>
         </div>
-        <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
             <span class="status-badge" id="cups-badge">● CUPS: {{ status.cups.upper() }}</span>
             <span class="status-badge" id="avahi-badge">● mDNS: {{ status.avahi.upper() }}</span>
+            <button type="button" id="theme-toggle-btn" onclick="toggleTheme()" class="btn btn-outline" style="padding: 6px 14px; font-size: 0.85rem; border-radius: 99px;">☀️ Modo Claro</button>
             <a href="/logout" class="btn btn-outline" style="padding: 6px 14px; font-size: 0.85rem; text-decoration: none;">🚪 Salir</a>
         </div>
     </header>
