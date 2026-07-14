@@ -1,0 +1,14 @@
+# Logs y temporales
+*.log
+*.tmp
+*~
+.DS_Store
+
+# Directorios temporales de CUPS o PPDs descargados en pruebas
+/*.ppd
+/cache/
+/tmp/
+
+# Archivos de entorno y credenciales locales
+.env
+*.secret
