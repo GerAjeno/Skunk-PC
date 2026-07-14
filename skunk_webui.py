@@ -312,8 +312,9 @@ HTML_TEMPLATE = """
         </div>
         <div class="card">
             <div class="card-title">Respaldos & Desastres</div>
-            <div class="card-value">
-                <button class="btn btn-success" style="font-size: 0.85rem; width: 100%; justify-content: center;" onclick="backupSystem()">📦 Descargar Respaldo</button>
+            <div class="card-value" style="gap: 8px;">
+                <button class="btn btn-success" style="font-size: 0.8rem; flex: 1; justify-content: center;" onclick="backupSystem()">📦 Descargar</button>
+                <button class="btn btn-outline" style="font-size: 0.8rem; flex: 1; justify-content: center;" onclick="openRestoreModal()">📤 Importar</button>
             </div>
         </div>
     </div>
@@ -415,8 +416,27 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
+    <!-- RESTORE MODAL -->
+    <div id="restoreModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(5px); z-index:1000; align-items:center; justify-content:center;">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 1.5rem;">📤 Importar y Restaurar Respaldo (.tar.gz)</h3>
+            <p style="font-size: 0.9rem; color: var(--subtext); margin-bottom: 1.2rem;">
+                Selecciona el archivo de copia de seguridad descargado previamente para restaurar al instante todas tus colas y parámetros.
+            </p>
+            <div class="form-group">
+                <label>Archivo de Copia de Seguridad (`.tar.gz`)</label>
+                <input type="file" id="backupFileInput" accept=".tar.gz,.tgz">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-outline" onclick="closeModal('restoreModal')">Cancelar</button>
+                <button class="btn btn-danger" onclick="submitRestore()">Restaurar Configuración</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         function openAddModal() { document.getElementById('addModal').style.display = 'flex'; }
+        function openRestoreModal() { document.getElementById('restoreModal').style.display = 'flex'; }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
         function openRenameModal(name) {
             document.getElementById('oldName').value = name;
@@ -501,6 +521,26 @@ HTML_TEMPLATE = """
 
         function backupSystem() {
             window.location.href = '/api/backup';
+        }
+
+        async function submitRestore() {
+            const fileInput = document.getElementById('backupFileInput');
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert("Por favor selecciona un archivo .tar.gz");
+                return;
+            }
+            if (!confirm("⚠️ ¿Estás seguro de restaurar este respaldo? Se sobrescribirán las colas actuales.")) return;
+            
+            const formData = new FormData();
+            formData.append("backup_file", fileInput.files[0]);
+            
+            const res = await fetch('/api/restore', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            alert(data.msg);
+            if (data.ok) location.reload();
         }
     </script>
 </body>
@@ -620,6 +660,39 @@ def api_backup():
                 tar.add(p, arcname=p.lstrip("/"))
                 
     return send_file(fpath, as_attachment=True, download_name=fname)
+
+@app.route("/api/restore", methods=["POST"])
+def api_restore():
+    if "backup_file" not in request.files:
+        return jsonify({"ok": False, "msg": "No se envió ningún archivo."})
+        
+    f = request.files["backup_file"]
+    if not f.filename.endswith(".tar.gz") and not f.filename.endswith(".tgz"):
+        return jsonify({"ok": False, "msg": "Formato inválido. Debe ser un archivo .tar.gz"})
+        
+    fpath = os.path.join(BACKUP_DIR, "uploaded_restore.tar.gz")
+    f.save(fpath)
+    
+    # Detener servicios temporalmente
+    run_cmd(["systemctl", "stop", "cups", "avahi-daemon", "cups-browsed"])
+    
+    # Descomprimir en la raíz /
+    import tarfile
+    try:
+        with tarfile.open(fpath, "r:gz") as tar:
+            tar.extractall(path="/")
+    except Exception as e:
+        run_cmd(["systemctl", "start", "cups", "avahi-daemon", "cups-browsed"])
+        return jsonify({"ok": False, "msg": f"Error al extraer archivo de respaldo: {str(e)}"})
+        
+    # Ajustar permisos de CUPS tras la restauración
+    run_cmd(["chown", "-R", "root:lp", "/etc/cups/ppd"])
+    run_cmd(["chown", "root:lp", "/etc/cups/printers.conf"])
+    run_cmd(["chmod", "600", "/etc/cups/printers.conf"])
+    
+    # Reiniciar servicios con la configuración clonada/restaurada
+    run_cmd(["systemctl", "start", "cups", "avahi-daemon", "cups-browsed"])
+    return jsonify({"ok": True, "msg": "¡Restauración exitosa! Todas las colas y ajustes del respaldo han sido aplicados al servidor."})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080, debug=False)
