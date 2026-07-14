@@ -26,9 +26,10 @@ Por defecto, los contenedores LXC están aislados del hardware físico del servi
    ```
 3. Verás líneas similares a:
    ```text
+   Bus 001 Device 006: ID 0a5f:000a Zebra Technologies TLP2844
    Bus 001 Device 004: ID 0a5f:0080 Zebra GC420t
    ```
-   *El vendedor de Zebra es `0a5f`. Toma nota de que están en la clase USB impresora o en los nodos `/dev/usb/lp0`, `/dev/bus/usb/001/004`, etc.*
+   *El vendedor de Zebra es `0a5f` (tanto para `TLP2844` como para `GC420t`).*
 
 4. Verifica también qué archivos de dispositivo de impresora generó el kernel de Proxmox en el host:
    ```bash
@@ -37,18 +38,18 @@ Por defecto, los contenedores LXC están aislados del hardware físico del servi
 
 ---
 
-### Paso B: Configurar el Passthrough en el archivo `.conf` del Contenedor en Proxmox
+### Paso B: Configurar el Passthrough en el archivo `.conf` del Contenedor 100 en Proxmox
 
-Supongamos que tu contenedor Ubuntu Server 26.04 tiene el **ID 101** (sustituye por el ID real en Proxmox, ej. `100`, `102`...).
+Para tu contenedor Ubuntu Server con **ID 100 (Privilegiado / Privileged)**:
 
-1. En la consola SSH del **Host Proxmox**, edita el archivo de configuración del contenedor:
+1. En la consola del **Host Proxmox**, edita el archivo de configuración del contenedor 100:
    ```bash
-   nano /etc/pve/lxc/101.conf
+   nano /etc/pve/lxc/100.conf
    ```
-2. Añade las siguientes líneas al final del archivo para permitir el acceso a dispositivos de impresora (`cgroup2` para Proxmox VE 8+ o `cgroup` si es PVE 7) y montar las rutas USB:
+2. Añade las siguientes líneas al final del archivo para permitir el acceso y montar el bus USB y los puertos de impresora dentro del contenedor:
 
    ```ini
-   # --- SKUNK-PC: PASARELA USB PARA IMPRESORAS ZEBRA ---
+   # --- SKUNK-PC: PASARELA USB PARA IMPRESORAS ZEBRA (TLP2844 / GC420t) ---
    # Permitir dispositivos de caracteres USB (Bus genérico 189:* e impresoras lp 180:*)
    lxc.cgroup2.devices.allow: c 180:* rwm
    lxc.cgroup2.devices.allow: c 189:* rwm
@@ -57,12 +58,12 @@ Supongamos que tu contenedor Ubuntu Server 26.04 tiene el **ID 101** (sustituye 
    lxc.mount.entry: /dev/bus/usb dev/bus/usb none bind,optional,create=dir 0 0
    lxc.mount.entry: /dev/usb dev/usb none bind,optional,create=dir 0 0
    ```
-   *(Nota: Si tu contenedor es **No Privilegiado / Unprivileged (ID de usuario remapeado 100000+)**, para evitar errores de permisos `Permission denied` en el USB, se recomienda asignar el contenedor como **Privileged** en Proxmox o ajustar el chown/chmod en `/etc/udev/rules.d/` en el host Proxmox para que el grupo 100000+ pueda leer `/dev/usb/lp*`).*
+   *(Al ser tu contenedor **Privilegiado**, el usuario `root` y `cups` dentro del contenedor tendrán acceso directo de lectura/escritura sin problemas de remapeo de ID).*
 
 3. Guarda el archivo (`Ctrl + O`, `Enter`, `Ctrl + X`).
-4. **Reinicia el contenedor** desde la web de Proxmox o por terminal:
+4. **Reinicia el contenedor** en Proxmox:
    ```bash
-   pct stop 101 && pct start 101
+   pct stop 100 && pct start 100
    ```
 
 ---

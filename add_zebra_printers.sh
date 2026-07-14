@@ -35,7 +35,7 @@ log_info "Verificando controladores disponibles en CUPS para Zebra EPL2/ZPL..."
 PPD_MODEL=""
 
 # Intentar buscar PPD en lpinfo -m
-if PPD_MODEL=$(lpinfo -m 2>/dev/null | awk '/Zebra.*ZPL/ || /foo2zjs.*Zebra/ || /drv:\/\/\/sample.drv\/zebra.ppd/ || /Zebra.*EPL2/ {print $1; exit}'); then
+if PPD_MODEL=$(lpinfo -m 2>/dev/null | awk '/Zebra.*ZPL/ || /foo2zjs.*Zebra/ || /Zebra.*TLP2844/ || /drv:\/\/\/sample.drv\/zebra.ppd/ || /Zebra.*EPL2/ {print $1; exit}'); then
     if [ -n "$PPD_MODEL" ]; then
         log_success "Driver compatible detectado en CUPS: ${YELLOW}${PPD_MODEL}${NC}"
     fi
@@ -53,7 +53,7 @@ add_cups_printer() {
     local NAME="$1"
     local URI="$2"
     local MODEL="$3"
-    local DESCRIPTION="${4:-Impresora Térmica Zebra GC420t}"
+    local DESCRIPTION="${4:-Impresora Térmica Zebra (GC420t / TLP2844)}"
 
     log_info "Registrando cola de impresión '${BOLD}${NAME}${NC}' en CUPS..."
     log_info "  -> URI: ${URI}"
@@ -68,7 +68,7 @@ add_cups_printer() {
     else
         # Intentar con PPD especificado
         if ! lpadmin -p "$NAME" -v "$URI" -E -m "$MODEL" -o printer-is-shared=true -D "$DESCRIPTION" -L "Almacén / Red Skunk-PC" 2>/dev/null; then
-            log_warn "El driver ${MODEL} no pudo inicializarse por fallo de PPD. Reintentando en modo genérico 'raw' (común en ZPL directo)..."
+            log_warn "El driver ${MODEL} no pudo inicializarse por fallo de PPD. Reintentando en modo genérico 'raw' (común en EPL2/ZPL directo)..."
             lpadmin -p "$NAME" -v "$URI" -E -o raw -o printer-is-shared=true -D "$DESCRIPTION" -L "Almacén / Red Skunk-PC"
         fi
     fi
@@ -85,11 +85,11 @@ add_cups_printer() {
 
 # 2. Escaneo de dispositivos USB en el servidor
 log_info "Escaneando puertos USB físicos buscando dispositivos Zebra (lpinfo -v)..."
-mapfile -t USB_URIS < <(lpinfo -v 2>/dev/null | grep -iE "usb://.*(Zebra|GC420t)" | awk '{print $2}' || true)
+mapfile -t USB_URIS < <(lpinfo -v 2>/dev/null | grep -iE "usb://.*(Zebra|GC420|TLP2844|LP2844|GK420|GX420|ZD420|ZD620)" | awk '{print $2}' || true)
 
 # Si lpinfo no devuelve específicamente 'Zebra', buscar cualquier impresora USB conectada
 if [ ${#USB_URIS[@]} -eq 0 ]; then
-    log_warn "lpinfo no encontró URIs explícitos de 'Zebra'."
+    log_warn "lpinfo no encontró URIs explícitos con nombre 'Zebra/TLP2844'."
     mapfile -t USB_URIS < <(lpinfo -v 2>/dev/null | grep -i "^direct usb://" | awk '{print $2}' || true)
 fi
 
