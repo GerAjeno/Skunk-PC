@@ -218,6 +218,12 @@ LOGIN_TEMPLATE = """
             font-family: 'Outfit', sans-serif;
         }
         .btn-submit:hover { filter: brightness(1.15); transform: translateY(-2px); }
+        .btn-submit:active, .theme-btn:active {
+            transform: scale(0.93) translateY(2px) !important;
+            filter: brightness(0.85) !important;
+            box-shadow: inset 0 3px 6px rgba(0,0,0,0.5) !important;
+            transition: all 0.05s ease !important;
+        }
         .error-msg {
             background: rgba(244, 63, 94, 0.15);
             border: 1px solid rgba(244, 63, 94, 0.3);
@@ -249,7 +255,7 @@ LOGIN_TEMPLATE = """
         {% if error %}
         <div class="error-msg">❌ {{ error }}</div>
         {% endif %}
-        <form method="POST" action="/login">
+        <form method="POST" action="/login" onsubmit="document.querySelector('.btn-submit').innerHTML = '⏳ Entrando al portal...'; document.querySelector('.btn-submit').style.opacity = '0.8';">
             <div class="form-group">
                 <label>Contraseña de Acceso al Portal</label>
                 <input type="password" name="password" placeholder="••••••••••••" required autofocus>
@@ -409,6 +415,12 @@ HTML_TEMPLATE = """
             font-size: 0.9rem;
         }
         .btn:hover { filter: brightness(1.15); transform: scale(1.02); }
+        .btn:active, button:active, .btn-outline:active, .btn-success:active, .btn-danger:active, .btn-warning:active {
+            transform: scale(0.92) translateY(2px) !important;
+            filter: brightness(0.8) !important;
+            box-shadow: inset 0 3px 6px rgba(0,0,0,0.5) !important;
+            transition: all 0.05s ease !important;
+        }
         .btn-success { background: var(--success); color: #fff; }
         .btn-danger { background: var(--danger); color: #fff; }
         .btn-warning { background: var(--warning); color: #000; }
@@ -651,34 +663,73 @@ HTML_TEMPLATE = """
             document.getElementById('netField').style.display = (val === 'net') ? 'block' : 'none';
         }
 
+        function btnLoading(e, msg = '⏳ Procesando...') {
+            if (!e || !e.target) return null;
+            const btn = e.target.closest('button') || e.target.closest('a');
+            if (!btn) return null;
+            const oldHtml = btn.innerHTML;
+            btn.innerHTML = msg;
+            btn.style.opacity = '0.75';
+            btn.disabled = true;
+            return () => {
+                btn.innerHTML = oldHtml;
+                btn.style.opacity = '1';
+                btn.disabled = false;
+            };
+        }
+
         async function sendTest(printer, type) {
-            const res = await fetch(`/api/test/${printer}?type=${type}`, { method: 'POST' });
-            const data = await res.json();
-            alert(data.msg);
+            const resetBtn = btnLoading(window.event, '⏳ Enviando...');
+            try {
+                const res = await fetch(`/api/test/${printer}?type=${type}`, { method: 'POST' });
+                const data = await res.json();
+                if (resetBtn) resetBtn();
+                alert(data.msg);
+            } catch (e) {
+                if (resetBtn) resetBtn();
+                alert("Error de red al intentar enviar prueba.");
+            }
         }
 
         async function calibrate(printer) {
             if (!confirm(`¿Fuerzar calibración de sensor en ${printer}? La impresora expulsará 2 o 3 etiquetas en blanco.`)) return;
-            const res = await fetch(`/api/calibrate/${printer}`, { method: 'POST' });
-            const data = await res.json();
-            alert(data.msg);
+            const resetBtn = btnLoading(window.event, '⏳ Calibrando...');
+            try {
+                const res = await fetch(`/api/calibrate/${printer}`, { method: 'POST' });
+                const data = await res.json();
+                if (resetBtn) resetBtn();
+                alert(data.msg);
+            } catch (e) {
+                if (resetBtn) resetBtn();
+                alert("Error al ejecutar calibración.");
+            }
         }
 
         async function resetQueue(printer) {
-            const res = await fetch(`/api/reset/${printer}`, { method: 'POST' });
-            const data = await res.json();
-            alert(data.msg);
-            location.reload();
+            const resetBtn = btnLoading(window.event, '⏳ Limpiando...');
+            try {
+                const res = await fetch(`/api/reset/${printer}`, { method: 'POST' });
+                const data = await res.json();
+                if (resetBtn) resetBtn();
+                alert(data.msg);
+                location.reload();
+            } catch (e) {
+                if (resetBtn) resetBtn();
+                alert("Error al intentar reiniciar cola.");
+            }
         }
 
         async function deleteQueue(printer) {
             if (!confirm(`⚠️ ¿Estás completamente seguro de ELIMINAR la impresora '${printer}' del servidor CUPS?`)) return;
+            const resetBtn = btnLoading(window.event, '⏳ Eliminando...');
             try {
                 const res = await fetch(`/api/delete/${printer}`, { method: 'POST' });
                 const data = await res.json();
+                if (resetBtn) resetBtn();
                 alert(data.msg);
                 if (data.ok) location.reload();
             } catch (e) {
+                if (resetBtn) resetBtn();
                 alert("Error de conexión al intentar eliminar la impresora.");
             }
         }
@@ -698,13 +749,20 @@ HTML_TEMPLATE = """
             
             if (!name || !uri) { alert("Nombre y URI o IP son obligatorios"); return; }
             
-            const res = await fetch('/api/add', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, uri, driver })
-            });
-            const data = await res.json();
-            if (data.ok) location.reload(); else alert(data.msg);
+            const resetBtn = btnLoading(window.event, '⏳ Instalando...');
+            try {
+                const res = await fetch('/api/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, uri, driver })
+                });
+                const data = await res.json();
+                if (resetBtn) resetBtn();
+                if (data.ok) location.reload(); else alert(data.msg);
+            } catch (e) {
+                if (resetBtn) resetBtn();
+                alert("Error de red al añadir impresora.");
+            }
         }
 
         async function submitRename() {
@@ -712,21 +770,30 @@ HTML_TEMPLATE = """
             const new_name = document.getElementById('newName').value.trim();
             if (!new_name) return;
             
-            const res = await fetch('/api/rename', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ old_name, new_name })
-            });
-            const data = await res.json();
-            if (data.ok) location.reload(); else alert(data.msg);
+            const resetBtn = btnLoading(window.event, '⏳ Renombrando...');
+            try {
+                const res = await fetch('/api/rename', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ old_name, new_name })
+                });
+                const data = await res.json();
+                if (resetBtn) resetBtn();
+                if (data.ok) location.reload(); else alert(data.msg);
+            } catch (e) {
+                if (resetBtn) resetBtn();
+                alert("Error de red al renombrar.");
+            }
         }
 
         async function toggleWatchdog() {
+            const resetBtn = btnLoading(window.event, '⏳ Cambiando...');
             await fetch('/api/toggle_watchdog', { method: 'POST' });
             location.reload();
         }
 
         function backupSystem() {
+            btnLoading(window.event, '📦 Generando...');
             window.location.href = '/api/backup';
         }
 
@@ -741,13 +808,20 @@ HTML_TEMPLATE = """
             const formData = new FormData();
             formData.append("backup_file", fileInput.files[0]);
             
-            const res = await fetch('/api/restore', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await res.json();
-            alert(data.msg);
-            if (data.ok) location.reload();
+            const resetBtn = btnLoading(window.event, '⏳ Restaurando...');
+            try {
+                const res = await fetch('/api/restore', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (resetBtn) resetBtn();
+                alert(data.msg);
+                if (data.ok) location.reload();
+            } catch (e) {
+                if (resetBtn) resetBtn();
+                alert("Error de red al restaurar respaldo.");
+            }
         }
     </script>
     <footer style="text-align: center; margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--border); color: var(--subtext); font-size: 0.85rem; font-weight: 500;">
