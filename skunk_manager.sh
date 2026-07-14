@@ -46,9 +46,10 @@ while true; do
     echo -e "  ${BOLD}ℹ️  CONSULTA Y DIAGNÓSTICO:${NC}"
     echo -e "  ${BOLD}[9] Ver Estado en Tiempo Real de Colas y Trabajos${NC} (${CYAN}lpstat -r -p -d -v${NC})"
     echo -e "  ${BOLD}[10] Consultar Guía de Depuración${NC} (${CYAN}TROUBLESHOOTING.md${NC})"
+    echo -e "  ${BOLD}[11] Diagnóstico Profundo, Permisos y Test Hardware TLP2844${NC} (${CYAN}fix_tlp2844.sh${NC})"
     echo -e "  ${BOLD}[0] Salir${NC}"
     echo -e "${CYAN}==============================================================================${NC}"
-    read -p "Selecciona una opción [0-10]: " OPT
+    read -p "Selecciona una opción [0-11]: " OPT
 
     case "$OPT" in
         1) bash "${BASE_DIR}/setup_printserver.sh"; read -p "Presiona ENTER para volver al menú..." || true ;;
@@ -74,6 +75,7 @@ while true; do
                 read -p "Presiona ENTER para continuar..." || true
             fi
             ;;
+        11) bash "${BASE_DIR}/fix_tlp2844.sh"; read -p "Presiona ENTER para volver al menú..." || true ;;
         0)
             echo -e "${GREEN}¡Hasta pronto! Skunk PC en línea.${NC}"
             exit 0
