@@ -14,7 +14,7 @@ import socket
 import json
 from flask import Flask, render_template_string, request, jsonify, send_file, session, redirect, url_for
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=os.path.join(os.path.dirname(os.path.abspath(__file__)), "static"), static_url_path="/static")
 app.secret_key = os.environ.get("SKUNK_SECRET_KEY", "SkunkPC_SuperSecret_2026_Key_Secure")
 
 # Contraseña de acceso al portal Web UI (Predeterminada: Lasgarzas911)
@@ -117,6 +117,8 @@ LOGIN_TEMPLATE = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acceso Seguro - Skunk PC Portal</title>
+    <link rel="icon" type="image/png" href="/static/icon.png">
+    <link rel="apple-touch-icon" href="/static/icon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -144,13 +146,13 @@ LOGIN_TEMPLATE = """
     <style>
         :root, [data-theme="amoled"] {
             --bg: #000000;
-            --card-bg: rgba(18, 18, 18, 0.9);
-            --border: rgba(255, 255, 255, 0.15);
+            --card-bg: #000000;
+            --border: rgba(255, 255, 255, 0.22);
             --primary: #38bdf8;
             --danger: #f43f5e;
             --text: #ffffff;
             --subtext: #a1a1aa;
-            --grad-start: #0a0a0a;
+            --grad-start: #000000;
             --grad-end: #000000;
         }
         [data-theme="light"] {
@@ -249,7 +251,7 @@ LOGIN_TEMPLATE = """
 </head>
 <body>
     <div class="login-card">
-        <span class="logo-icon">🔒</span>
+        <img src="/static/icon.png" alt="Skunk PC Logo" style="width: 86px; height: 86px; object-fit: contain; margin-bottom: 1rem; filter: drop-shadow(0 4px 12px rgba(56, 189, 248, 0.25));">
         <h2>Skunk PC Print Server</h2>
         <p>Introduce la contraseña de seguridad para administrar las colas de impresión de la nave.</p>
         {% if error %}
@@ -278,6 +280,8 @@ HTML_TEMPLATE = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Skunk PC - Enterprise Print Server Dashboard</title>
+    <link rel="icon" type="image/png" href="/static/icon.png">
+    <link rel="apple-touch-icon" href="/static/icon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -305,15 +309,15 @@ HTML_TEMPLATE = """
     <style>
         :root, [data-theme="amoled"] {
             --bg: #000000;
-            --card-bg: rgba(18, 18, 18, 0.85);
-            --border: rgba(255, 255, 255, 0.15);
+            --card-bg: #000000;
+            --border: rgba(255, 255, 255, 0.22);
             --primary: #38bdf8;
             --success: #10b981;
             --warning: #f59e0b;
             --danger: #f43f5e;
             --text: #ffffff;
             --subtext: #a1a1aa;
-            --grad-start: #0a0a0a;
+            --grad-start: #000000;
             --grad-end: #000000;
         }
         [data-theme="light"] {
@@ -486,14 +490,14 @@ HTML_TEMPLATE = """
             font-size: 0.95rem;
         }
         input:focus, select:focus { outline: none; border-color: var(--primary); }
-        select option { background: #0f172a; color: #fff; }
+        select option { background: var(--card-bg); color: var(--text); }
         .modal-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 1.8rem; }
     </style>
 </head>
 <body>
     <header>
         <div class="logo">
-            <span class="logo-icon">🖨️</span>
+            <img src="/static/icon.png" alt="Skunk PC Logo" style="width: 52px; height: 52px; object-fit: contain; filter: drop-shadow(0 2px 8px rgba(56, 189, 248, 0.25));">
             <div>
                 <h1>Skunk PC Print Server</h1>
                 <p style="color: var(--subtext); font-size: 0.85rem;">Universal mDNS / AirPrint / Mopria Industrial Gateway</p>
