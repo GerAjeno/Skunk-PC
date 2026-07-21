@@ -1215,8 +1215,24 @@ def unbind_usbfs_drivers():
         except Exception as e:
             pass
 
+def enforce_unidirectional_usb():
+    ok, stdout, _ = run_cmd(["lpstat", "-v"])
+    if ok and stdout:
+        for line in stdout.split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            match = re.match(r"^(?:device for|dispositivo para)\s+([^:]+):\s+(.*)$", line, re.IGNORECASE)
+            if match:
+                pname = match.group(1).strip()
+                uri = match.group(2).strip()
+                if uri.startswith("usb://") and "nogetstatus=true" not in uri:
+                    new_uri = uri + ("&nogetstatus=true" if "?" in uri else "?nogetstatus=true")
+                    run_cmd(["lpadmin", "-p", pname, "-v", new_uri, "-o", "usb-unidirectional-default=true", "-E"])
+
 if __name__ == "__main__":
     unbind_usbfs_drivers()
+    enforce_unidirectional_usb()
     # Auto-patch all Zebra PPD files on startup so 100x150mm (w288h432) is always #1 and default
     ppd_dir = "/etc/cups/ppd"
     if os.path.exists(ppd_dir):
