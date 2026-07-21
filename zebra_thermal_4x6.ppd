@@ -1,0 +1,70 @@
+*PPD-Adobe: "4.3"
+*FormatVersion: "4.3"
+*FileVersion: "2.4"
+*LanguageVersion: Spanish
+*LanguageEncoding: ISOLatin1
+*PCFileName: "ZEBRA4X6.PPD"
+*Manufacturer: "Zebra"
+*Product: "(ZPL Label Printer)"
+*ModelName: "Zebra ZPL 100x150mm Label Printer"
+*ShortNickName: "Zebra ZPL 4x6/100x150mm"
+*NickName: "Zebra ZPL 4x6/100x150mm Label Printer (Skunk-PC)"
+*PSVersion: "(3010.000) 0"
+*LanguageLevel: "3"
+*ColorDevice: False
+*DefaultColorSpace: Gray
+*FileSystem: False
+*Throughput: "1"
+*LandscapeOrientation: Plus90
+*TTPFDROptimized: True
+
+*Filter: "application/vnd.cups-raster 50 rastertozebra"
+
+*OpenUI *PageSize/Tamaño de Etiqueta: PickOne
+*OrderDependency: 10 AnySetup *PageSize
+*DefaultPageSize: w288h432
+*PageSize w288h432/100x150 mm (4x6 in): ""
+*PageSize w144h72/50x25 mm (2x1 in): ""
+*PageSize w288h288/100x100 mm (4x4 in): ""
+*PageSize w216h144/75x50 mm (3x2 in): ""
+*CloseUI: *PageSize
+
+*OpenUI *PageRegion/Tamaño de Etiqueta: PickOne
+*OrderDependency: 10 AnySetup *PageRegion
+*DefaultPageRegion: w288h432
+*PageRegion w288h432/100x150 mm (4x6 in): ""
+*PageRegion w144h72/50x25 mm (2x1 in): ""
+*PageRegion w288h288/100x100 mm (4x4 in): ""
+*PageRegion w216h144/75x50 mm (3x2 in): ""
+*CloseUI: *PageRegion
+
+*DefaultImageableArea: w288h432
+*ImageableArea w288h432/100x150 mm (4x6 in): "0 0 288 432"
+*ImageableArea w144h72/50x25 mm (2x1 in): "0 0 144 72"
+*ImageableArea w288h288/100x100 mm (4x4 in): "0 0 288 288"
+*ImageableArea w216h144/75x50 mm (3x2 in): "0 0 216 144"
+
+*DefaultPaperDimension: w288h432
+*PaperDimension w288h432/100x150 mm (4x6 in): "288 432"
+*PaperDimension w144h72/50x25 mm (2x1 in): "144 72"
+*PaperDimension w288h288/100x100 mm (4x4 in): "288 288"
+*PaperDimension w216h144/75x50 mm (3x2 in): "216 144"
+
+*OpenUI *Resolution/Resolución: PickOne
+*OrderDependency: 20 AnySetup *Resolution
+*DefaultResolution: 203dpi
+*Resolution 203dpi/203 DPI (Térmico Directo): ""
+*CloseUI: *Resolution
+
+*OpenUI *zeMediaTracking/Modo de Sensor: PickOne
+*OrderDependency: 20 AnySetup *zeMediaTracking
+*DefaultzeMediaTracking: Web Mark
+*zeMediaTracking Continuous/Continuo: ""
+*zeMediaTracking Web Mark/Etiquetas con Separación (Gap): ""
+*CloseUI: *zeMediaTracking
+
+*OpenUI *MediaType/Tipo de Medio: PickOne
+*OrderDependency: 20 AnySetup *MediaType
+*DefaultMediaType: Saved
+*MediaType Saved/Térmico Directo: ""
+*CloseUI: *MediaType
