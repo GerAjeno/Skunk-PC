@@ -1002,8 +1002,11 @@ def api_add():
         ok, stdout, stderr = run_cmd(cmd_raw)
         
     if ok:
+        run_cmd(["lpadmin", "-p", name, "-o", "PageSize=w288h432", "-o", "media=w288h432", "-o", "zeMediaTracking=Web"])
+        patch_ppd_file(name, "w288h432")
         run_cmd(["cupsaccept", name])
         run_cmd(["cupsenable", name])
+        run_cmd(["systemctl", "restart", "cups"])
         return jsonify({"ok": True, "msg": f"Impresora {name} creada."})
     else:
         return jsonify({"ok": False, "msg": f"Error al crear impresora: {stderr}"})
@@ -1030,9 +1033,12 @@ def api_rename():
         cmd += ["-m", "/home/ger/Skunk-PC/zebra_thermal_4x6.ppd"]
         
     run_cmd(cmd)
+    run_cmd(["lpadmin", "-p", new_name, "-o", "PageSize=w288h432", "-o", "media=w288h432", "-o", "zeMediaTracking=Web"])
+    patch_ppd_file(new_name, "w288h432")
     run_cmd(["cupsaccept", new_name])
     run_cmd(["cupsenable", new_name])
     run_cmd(["lpadmin", "-x", old_name])
+    run_cmd(["systemctl", "restart", "cups"])
     return jsonify({"ok": True, "msg": f"Renombrado a {new_name} exitoso."})
 
 def patch_ppd_file(printer, default_size="w288h432"):
