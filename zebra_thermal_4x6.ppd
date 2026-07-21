@@ -58,9 +58,9 @@
 
 *OpenUI *zeMediaTracking/Modo de Sensor: PickOne
 *OrderDependency: 20 AnySetup *zeMediaTracking
-*DefaultzeMediaTracking: Web Mark
+*DefaultzeMediaTracking: WebMark
+*zeMediaTracking WebMark/Etiquetas con Separación (Gap): ""
 *zeMediaTracking Continuous/Continuo: ""
-*zeMediaTracking Web Mark/Etiquetas con Separación (Gap): ""
 *CloseUI: *zeMediaTracking
 
 *OpenUI *MediaType/Tipo de Medio: PickOne
