@@ -53,12 +53,10 @@ if ! [[ "$SEL_IDX" =~ ^[0-9]+$ ]] || [ "$SEL_IDX" -lt 1 ] || [ "$SEL_IDX" -gt ${
     exit 1
 fi
 
-OLD_NAME="${PRINTERS[$((SEL_IDX-1))]}"
-OLD_URI=$(lpstat -v "$OLD_NAME" 2>/dev/null | awk '{print $3}' | tr -d ':' || echo "")
+OLD_URI=$(lpstat -v "$OLD_NAME" 2>/dev/null | sed 's/.*device for [^:]*: //' || echo "")
 
 if [ -z "$OLD_URI" ]; then
-    # Intentar obtener URI alternativo
-    OLD_URI=$(lpstat -v "$OLD_NAME" 2>/dev/null | sed 's/.*://' | tr -d ' ' || echo "file:///dev/null")
+    OLD_URI="file:///dev/null"
 fi
 
 echo ""

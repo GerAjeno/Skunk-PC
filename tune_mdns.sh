@@ -45,7 +45,7 @@ if [ -f "$AVAHI_CONF" ]; then
     sed -i 's/^publish-workstation=.*/publish-workstation=yes/' "$AVAHI_CONF" || true
     
     # Prevenir bloqueos por límites en contenedores Proxmox LXC
-    if ! grep -q "rlimit-nproc=0" "$AVAHI_CONF"; then
+    if ! grep -E "^rlimit-nproc=0" "$AVAHI_CONF" >/dev/null 2>&1; then
         sed -i '/^\[server\]/a rlimit-nproc=0' "$AVAHI_CONF" || true
     fi
 fi
