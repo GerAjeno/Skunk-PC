@@ -1043,8 +1043,14 @@ def patch_ppd_file(printer, default_size="w288h432"):
         with open(ppd_path, "r", encoding="latin-1", errors="ignore") as f:
             lines = f.readlines()
             
+        non_thermal = [" A4/", " A4:", " A5/", " A5:", " A5Rotated", " Letter", " Legal", " Executive"]
         new_lines = []
+        
         for line in lines:
+            # Strip lines that reference A4, A5, Letter in paper size blocks
+            if any(k in line for k in non_thermal) and any(p in line for p in ["*PageSize", "*PageRegion", "*ImageableArea", "*PaperDimension"]):
+                continue
+                
             if line.startswith("*DefaultPageSize:"):
                 new_lines.append(f"*DefaultPageSize: {default_size}\n")
             elif line.startswith("*DefaultPageRegion:"):
