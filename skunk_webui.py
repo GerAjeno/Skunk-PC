@@ -73,6 +73,9 @@ def get_printers():
     if not ok or not stdout:
         return printers
         
+    _, lsusb_out, _ = run_cmd(["lsusb"])
+    _, lpinfo_out, _ = run_cmd(["lpinfo", "-v"])
+    
     for line in stdout.split("\n"):
         line = line.strip()
         if not line:
@@ -82,21 +85,40 @@ def get_printers():
             pname = match.group(1).strip()
             uri = match.group(2).strip()
             
-            # Obtener estado
             s_ok, s_out, _ = run_cmd(["lpstat", "-p", pname])
+            j_ok, j_out, _ = run_cmd(["lpstat", "-o", pname])
+            has_pending_jobs = bool(j_ok and j_out.strip())
+            
+            usb_connected = True
+            if uri.startswith("usb://"):
+                if uri not in lpinfo_out and "Zebra" not in lsusb_out and "ZTC" not in lsusb_out:
+                    usb_connected = False
+                    
             status = "idle"
-            s_lower = s_out.lower()
-            if "idle" in s_lower or "inactiva" in s_lower or "libre" in s_lower:
-                status = "idle"
-            elif "printing" in s_lower or "imprimiendo" in s_lower:
+            status_text = "🟢 En Línea / Lista"
+            status_color = "success"
+            
+            if not usb_connected:
+                status = "disconnected"
+                status_text = "🔴 USB Desconectado o Sin Energía"
+                status_color = "danger"
+            elif has_pending_jobs:
                 status = "printing"
-            elif "stopped" in s_lower or "disabled" in s_lower or "detenida" in s_lower or "desactivada" in s_lower:
+                status_text = "🔵 Procesando / Imprimiendo"
+                status_color = "primary"
+            elif "stopped" in s_out.lower() or "disabled" in s_out.lower() or "detenida" in s_out.lower():
                 status = "stopped"
+                status_text = "🟡 Pausada / Auto-Recuperando"
+                status_color = "warning"
                 
             printers.append({
                 "name": pname,
                 "uri": uri,
                 "status": status,
+                "status_text": status_text,
+                "status_color": status_color,
+                "usb_connected": usb_connected,
+                "has_jobs": has_pending_jobs,
                 "raw_status": s_out
             })
     return printers
@@ -555,8 +577,8 @@ HTML_TEMPLATE = """
                     <div class="printer-name">{{ p.name }}</div>
                     <div class="printer-uri">{{ p.uri }}</div>
                 </div>
-                <span class="status-badge {% if p.status == 'stopped' %}stopped{% endif %}">
-                    {{ p.status.upper() }}
+                <span class="status-badge" style="{% if p.status == 'disconnected' %}background: rgba(244,63,94,0.15); color: var(--danger); border: 1px solid var(--danger);{% elif p.status == 'printing' %}background: rgba(56,189,248,0.15); color: var(--primary); border: 1px solid var(--primary);{% elif p.status == 'stopped' %}background: rgba(245,158,11,0.15); color: var(--warning); border: 1px solid var(--warning);{% else %}background: rgba(16,185,129,0.15); color: var(--success); border: 1px solid var(--success);{% endif %} padding: 6px 14px; border-radius: 99px; font-weight: 700; font-size: 0.85rem;">
+                    {{ p.status_text }}
                 </span>
             </div>
             
