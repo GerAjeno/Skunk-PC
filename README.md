@@ -78,6 +78,31 @@ sudo bash setup_printserver.sh && sudo bash configure_cups_network.sh && sudo ba
 
 ---
 
+## ☁️ Acceso Remoto con Cloudflare Tunnel (`cloudflared`)
+
+Para exponer la Web UI (`http://localhost:8080`) a través de un dominio público seguro (ejemplo: `skunk.ger-cloud.cc`) con certificado SSL sin necesidad de abrir puertos en el router:
+
+### 1. Instalación Rápida de `cloudflared` (Standalone)
+```bash
+mkdir -p ~/.local/bin
+curl -L -o ~/.local/bin/cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+chmod +x ~/.local/bin/cloudflared
+```
+
+### 2. Vinculación con tu Dominio (Cloudflare Zero Trust)
+1. En el panel de **Cloudflare Zero Trust** -> **Networks** -> **Tunnels**, crea un nuevo túnel (ej. `Skunk-PC`).
+2. En la pestaña **Public Hostname**, configura:
+   - **Subdomain**: `skunk`
+   - **Domain**: `ger-cloud.cc`
+   - **Type**: `HTTP`
+   - **URL**: `localhost:8080`
+3. Instala y ejecuta el servicio persistente en el servidor con el token generado:
+   ```bash
+   sudo cloudflared service install <TU_TUNNEL_TOKEN>
+   ```
+
+---
+
 ## 📱 Guía Completa: Impresión desde Teléfonos Android por Wi-Fi
 
 El servidor Skunk PC traduce al instante solicitudes de impresión desde Android en comandos térmicos nativos (**EPL2** a 203 DPI para TLP2844 / **ZPL II** para GC420t).
