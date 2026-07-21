@@ -43,8 +43,8 @@ fi
 
 if [ -z "$PPD_MODEL" ]; then
     log_warn "No se encontró un PPD explícito de Zebra en la cache rápida de CUPS."
-    log_info "Asignando controlador nativo de Eltron/Zebra EPL2 'drv:///sample.drv/zebraep2.ppd'."
-    PPD_MODEL="drv:///sample.drv/zebraep2.ppd"
+    log_info "Asignando controlador nativo térmico de Zebra 100x150mm '/home/ger/Skunk-PC/zebra_thermal_4x6.ppd'."
+    PPD_MODEL="/home/ger/Skunk-PC/zebra_thermal_4x6.ppd"
 fi
 echo ""
 
