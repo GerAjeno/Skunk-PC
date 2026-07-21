@@ -27,7 +27,9 @@ os.makedirs(BACKUP_DIR, exist_ok=True)
 
 def run_cmd(cmd_list):
     try:
-        res = subprocess.run(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=15)
+        env = os.environ.copy()
+        env["LC_ALL"] = "C"
+        res = subprocess.run(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=15, env=env)
         return res.returncode == 0, res.stdout.strip(), res.stderr.strip()
     except Exception as e:
         return False, "", str(e)
@@ -75,20 +77,20 @@ def get_printers():
         line = line.strip()
         if not line:
             continue
-        # Ejemplo: device for Zebra_TLP2844: usb://Zebra/TLP2844...
-        parts = line.split(":")
-        if len(parts) >= 2 and line.startswith("device for "):
-            pname = parts[0].replace("device for ", "").strip()
-            uri = line.split(": ", 1)[1].strip() if ": " in line else parts[1].strip()
+        match = re.match(r"^(?:device for|dispositivo para)\s+([^:]+):\s+(.*)$", line, re.IGNORECASE)
+        if match:
+            pname = match.group(1).strip()
+            uri = match.group(2).strip()
             
             # Obtener estado
             s_ok, s_out, _ = run_cmd(["lpstat", "-p", pname])
             status = "idle"
-            if "idle" in s_out.lower():
+            s_lower = s_out.lower()
+            if "idle" in s_lower or "inactiva" in s_lower or "libre" in s_lower:
                 status = "idle"
-            elif "printing" in s_out.lower():
+            elif "printing" in s_lower or "imprimiendo" in s_lower:
                 status = "printing"
-            elif "stopped" in s_out.lower() or "disabled" in s_out.lower():
+            elif "stopped" in s_lower or "disabled" in s_lower or "detenida" in s_lower or "desactivada" in s_lower:
                 status = "stopped"
                 
             printers.append({
@@ -105,9 +107,11 @@ def get_usb_devices():
     if ok and stdout:
         for line in stdout.split("\n"):
             line = line.strip()
-            if line.startswith("direct usb://"):
-                uri = line.replace("direct ", "").strip()
-                usb_list.append(uri)
+            if "usb://" in line:
+                parts = line.split("usb://", 1)
+                uri = "usb://" + parts[1].strip()
+                if uri not in usb_list:
+                    usb_list.append(uri)
     return usb_list
 
 LOGIN_TEMPLATE = """
