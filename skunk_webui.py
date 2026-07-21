@@ -1035,6 +1035,55 @@ def api_rename():
     run_cmd(["lpadmin", "-x", old_name])
     return jsonify({"ok": True, "msg": f"Renombrado a {new_name} exitoso."})
 
+def patch_ppd_file(printer, default_size="w288h432"):
+    ppd_path = f"/etc/cups/ppd/{printer}.ppd"
+    if not os.path.exists(ppd_path):
+        return False
+    try:
+        with open(ppd_path, "r", encoding="latin-1", errors="ignore") as f:
+            lines = f.readlines()
+            
+        new_lines = []
+        for line in lines:
+            if line.startswith("*DefaultPageSize:"):
+                new_lines.append(f"*DefaultPageSize: {default_size}\n")
+            elif line.startswith("*DefaultPageRegion:"):
+                new_lines.append(f"*DefaultPageRegion: {default_size}\n")
+            elif line.startswith("*DefaultImageableArea:"):
+                new_lines.append(f"*DefaultImageableArea: {default_size}\n")
+            elif line.startswith("*DefaultPaperDimension:"):
+                new_lines.append(f"*DefaultPaperDimension: {default_size}\n")
+            else:
+                new_lines.append(line)
+                
+        final_lines = []
+        in_pagesize = False
+        pagesize_entries = []
+        for line in new_lines:
+            if line.startswith("*OpenUI *PageSize"):
+                in_pagesize = True
+                final_lines.append(line)
+            elif line.startswith("*CloseUI: *PageSize"):
+                in_pagesize = False
+                for pe in pagesize_entries:
+                    if f"*PageSize {default_size}/" in pe or f"*PageSize {default_size}:" in pe:
+                        final_lines.append(pe)
+                for pe in pagesize_entries:
+                    if not (f"*PageSize {default_size}/" in pe or f"*PageSize {default_size}:" in pe):
+                        final_lines.append(pe)
+                final_lines.append(line)
+            elif in_pagesize:
+                pagesize_entries.append(line)
+            else:
+                final_lines.append(line)
+                
+        with open(ppd_path, "w", encoding="latin-1") as f:
+            f.writelines(final_lines)
+        return True
+    except Exception as e:
+        print(f"Error patching PPD for {printer}: {e}")
+        return False
+
 @app.route("/api/label_size/<printer>", methods=["POST"])
 def api_label_size(printer):
     data = request.json or {}
@@ -1051,8 +1100,10 @@ def api_label_size(printer):
     cmd = ["lpadmin", "-p", printer, "-o", f"PageSize={size}", "-o", f"media={size}"]
     ok, stdout, stderr = run_cmd(cmd)
     if ok:
+        patch_ppd_file(printer, size)
         run_cmd(["cupsaccept", printer])
         run_cmd(["cupsenable", printer])
+        run_cmd(["systemctl", "restart", "cups"])
         return jsonify({"ok": True, "msg": f"✔ Tamaño de etiqueta de '{printer}' cambiado exitosamente a {size}."})
     else:
         return jsonify({"ok": False, "msg": f"Error al cambiar tamaño: {stderr}"})
@@ -1116,4 +1167,12 @@ def api_restore():
     return jsonify({"ok": True, "msg": "¡Restauración exitosa! Todas las colas y ajustes del respaldo han sido aplicados al servidor."})
 
 if __name__ == "__main__":
+    # Auto-patch all Zebra PPD files on startup so 100x150mm (w288h432) is always #1 and default
+    ppd_dir = "/etc/cups/ppd"
+    if os.path.exists(ppd_dir):
+        for f in os.listdir(ppd_dir):
+            if f.endswith(".ppd"):
+                p_name = f[:-4]
+                if "Lexmark" not in p_name:
+                    patch_ppd_file(p_name, "w288h432")
     app.run(host="0.0.0.0", port=8080, debug=False)
