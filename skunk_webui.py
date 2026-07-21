@@ -564,6 +564,7 @@ HTML_TEMPLATE = """
                 <button class="btn" onclick="sendTest('{{ p.name }}', 'epl')">🧪 Test EPL2</button>
                 <button class="btn" onclick="sendTest('{{ p.name }}', 'zpl')">🧪 Test ZPL II</button>
                 <button class="btn btn-outline" onclick="sendTest('{{ p.name }}', 'barcode')">🏷️ Cód. Barras</button>
+                <button class="btn btn-outline" onclick="openLabelModal('{{ p.name }}')">📐 Tamaño Etiqueta</button>
                 <button class="btn btn-outline" onclick="calibrate('{{ p.name }}')">📏 Calibrar Sensor</button>
                 <button class="btn btn-warning" onclick="resetQueue('{{ p.name }}')">⚡ Desatascar</button>
                 <button class="btn btn-outline" onclick="openRenameModal('{{ p.name }}')">✏️ Renombrar</button>
@@ -638,6 +639,39 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
+    <!-- LABEL SIZE MODAL -->
+    <div id="labelModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(5px); z-index:1000; align-items:center; justify-content:center;">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 1.5rem;">📐 Configurar Tamaño de Etiqueta / Papel</h3>
+            <input type="hidden" id="labelPrinterTarget">
+            <div class="form-group">
+                <label>Seleccionar Formato Predeterminado</label>
+                <select id="presetLabelSize" onchange="toggleCustomLabelField()">
+                    <option value="w288h432">🏷️ 100 x 150 mm (4 x 6 pulgadas) - Estándar Almacén</option>
+                    <option value="w144h72">🏷️ 50 x 25 mm (2 x 1 pulgada)</option>
+                    <option value="w288h288">🏷️ 100 x 100 mm (4 x 4 pulgadas)</option>
+                    <option value="w216h144">🏷️ 75 x 50 mm (3 x 2 pulgadas)</option>
+                    <option value="A4">📄 ISO A4 (210 x 297 mm)</option>
+                    <option value="custom">✏️ Tamaño Personalizado en mm (Ancho x Alto)</option>
+                </select>
+            </div>
+            <div id="customLabelFields" style="display:none; gap: 10px;">
+                <div class="form-group" style="flex:1;">
+                    <label>Ancho (mm)</label>
+                    <input type="number" id="customWidth" placeholder="100">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>Alto (mm)</label>
+                    <input type="number" id="customHeight" placeholder="150">
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-outline" onclick="closeModal('labelModal')">Cancelar</button>
+                <button class="btn btn-success" onclick="submitLabelSize()">Guardar Tamaño</button>
+            </div>
+        </div>
+    </div>
+
     <!-- RESTORE MODAL -->
     <div id="restoreModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(5px); z-index:1000; align-items:center; justify-content:center;">
         <div class="modal-content">
@@ -664,6 +698,45 @@ HTML_TEMPLATE = """
             document.getElementById('oldName').value = name;
             document.getElementById('newName').value = name;
             document.getElementById('renameModal').style.display = 'flex';
+        }
+        function openLabelModal(name) {
+            document.getElementById('labelPrinterTarget').value = name;
+            document.getElementById('presetLabelSize').value = 'w288h432';
+            toggleCustomLabelField();
+            document.getElementById('labelModal').style.display = 'flex';
+        }
+        function toggleCustomLabelField() {
+            const isCustom = document.getElementById('presetLabelSize').value === 'custom';
+            document.getElementById('customLabelFields').style.display = isCustom ? 'flex' : 'none';
+        }
+        async function submitLabelSize() {
+            const printer = document.getElementById('labelPrinterTarget').value;
+            const preset = document.getElementById('presetLabelSize').value;
+            let payload = {};
+            if (preset === 'custom') {
+                const width = document.getElementById('customWidth').value.trim();
+                const height = document.getElementById('customHeight').value.trim();
+                if (!width || !height) { alert("Ingresa ancho y alto en milímetros"); return; }
+                payload = { width, height };
+            } else {
+                payload = { size: preset };
+            }
+            
+            const resetBtn = btnLoading(window.event, '⏳ Guardando...');
+            try {
+                const res = await fetch(`/api/label_size/${printer}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (resetBtn) resetBtn();
+                alert(data.msg);
+                if (data.ok) location.reload();
+            } catch (e) {
+                if (resetBtn) resetBtn();
+                alert("Error de red al actualizar tamaño.");
+            }
         }
         function toggleConnField() {
             const val = document.getElementById('connType').value;
@@ -961,6 +1034,28 @@ def api_rename():
     run_cmd(["cupsenable", new_name])
     run_cmd(["lpadmin", "-x", old_name])
     return jsonify({"ok": True, "msg": f"Renombrado a {new_name} exitoso."})
+
+@app.route("/api/label_size/<printer>", methods=["POST"])
+def api_label_size(printer):
+    data = request.json or {}
+    size = data.get("size", "").strip()
+    width = data.get("width")
+    height = data.get("height")
+    
+    if width and height:
+        size = f"Custom.{width}x{height}mm"
+        
+    if not size:
+        return jsonify({"ok": False, "msg": "Tamaño de etiqueta inválido."})
+        
+    cmd = ["lpadmin", "-p", printer, "-o", f"PageSize={size}", "-o", f"media={size}"]
+    ok, stdout, stderr = run_cmd(cmd)
+    if ok:
+        run_cmd(["cupsaccept", printer])
+        run_cmd(["cupsenable", printer])
+        return jsonify({"ok": True, "msg": f"✔ Tamaño de etiqueta de '{printer}' cambiado exitosamente a {size}."})
+    else:
+        return jsonify({"ok": False, "msg": f"Error al cambiar tamaño: {stderr}"})
 
 @app.route("/api/toggle_watchdog", methods=["POST"])
 def api_toggle_watchdog():
