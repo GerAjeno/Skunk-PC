@@ -12,3 +12,9 @@
 # Archivos de entorno y credenciales locales
 .env
 *.secret
+
+# Python cache & test output files
+__pycache__/
+*.pyc
+*.epl
+*.zpl
