@@ -1226,11 +1226,23 @@ def enforce_unidirectional_usb():
             if match:
                 pname = match.group(1).strip()
                 uri = match.group(2).strip()
-                if uri.startswith("usb://") and "nogetstatus=true" not in uri:
-                    new_uri = uri + ("&nogetstatus=true" if "?" in uri else "?nogetstatus=true")
-                    run_cmd(["lpadmin", "-p", pname, "-v", new_uri, "-o", "usb-unidirectional-default=true", "-E"])
+                clean_uri = uri.replace("&nogetstatus=true", "").replace("?nogetstatus=true", "")
+                run_cmd(["lpadmin", "-p", pname, "-v", clean_uri, "-o", "usb-unidirectional-default=true", "-E"])
+
+def setup_udev_rules():
+    rule_path = "/etc/udev/rules.d/99-zebra-usb.rules"
+    content = 'SUBSYSTEM=="usb", ATTR{idVendor}=="0a5f", MODE="0666", GROUP="lp"\nSUBSYSTEM=="usb_device", ATTR{idVendor}=="0a5f", MODE="0666", GROUP="lp"\n'
+    try:
+        with open(rule_path, "w") as f:
+            f.write(content)
+        run_cmd(["udevadm", "control", "--reload-rules"])
+        run_cmd(["udevadm", "trigger"])
+        run_cmd(["chmod", "-R", "666", "/dev/bus/usb"])
+    except Exception as e:
+        pass
 
 if __name__ == "__main__":
+    setup_udev_rules()
     unbind_usbfs_drivers()
     enforce_unidirectional_usb()
     # Auto-patch all Zebra PPD files on startup so 100x150mm (w288h432) is always #1 and default
