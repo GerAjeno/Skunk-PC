@@ -1241,9 +1241,53 @@ def setup_udev_rules():
     except Exception as e:
         pass
 
+def setup_apparmor_fix():
+    run_cmd(["aa-complain", "/usr/sbin/cupsd"])
+    if os.path.exists("/etc/apparmor.d/usr.sbin.cupsd"):
+        os.makedirs("/etc/apparmor.d/disable", exist_ok=True)
+        disable_link = "/etc/apparmor.d/disable/usr.sbin.cupsd"
+        if not os.path.exists(disable_link):
+            try:
+                os.symlink("/etc/apparmor.d/usr.sbin.cupsd", disable_link)
+            except:
+                pass
+        run_cmd(["apparmor_parser", "-R", "/etc/apparmor.d/usr.sbin.cupsd"])
+        run_cmd(["systemctl", "reload", "apparmor"])
+
+def sync_printer_uris():
+    _, lpinfo_out, _ = run_cmd(["lpinfo", "-v"])
+    usb_uris = []
+    if lpinfo_out:
+        for line in lpinfo_out.split("\n"):
+            line = line.strip()
+            if "direct usb://" in line:
+                uri = line.split("direct ", 1)[1].strip()
+                usb_uris.append(uri)
+                
+    _, lpstat_out, _ = run_cmd(["lpstat", "-v"])
+    if lpstat_out:
+        for line in lpstat_out.split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            match = re.match(r"^(?:device for|dispositivo para)\s+([^:]+):\s+(.*)$", line, re.IGNORECASE)
+            if match:
+                pname = match.group(1).strip()
+                current_uri = match.group(2).strip()
+                clean_current = current_uri.replace("&nogetstatus=true", "").replace("?nogetstatus=true", "")
+                
+                if current_uri.startswith("usb://") and clean_current not in usb_uris:
+                    for u in usb_uris:
+                        if pname.lower() in u.lower() or ("gk888" in u.lower() and "chocolates" in pname.lower()) or ("gc420" in u.lower() and "plancheta" in pname.lower()) or ("unknown" in u.lower() and "chocolates" in pname.lower()):
+                            run_cmd(["lpadmin", "-p", pname, "-v", u, "-o", "usb-unidirectional-default=true", "-E"])
+                            run_cmd(["cupsenable", pname])
+                            break
+
 if __name__ == "__main__":
+    setup_apparmor_fix()
     setup_udev_rules()
     unbind_usbfs_drivers()
+    sync_printer_uris()
     enforce_unidirectional_usb()
     # Auto-patch all Zebra PPD files on startup so 100x150mm (w288h432) is always #1 and default
     ppd_dir = "/etc/cups/ppd"
