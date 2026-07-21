@@ -970,16 +970,21 @@ def index():
 @app.route("/api/test/<printer>", methods=["POST"])
 def api_test(printer):
     t = request.args.get("type", "epl")
-    if t == "epl":
-        payload = '\nN\nq609\nQ914,24\nA50,50,0,4,1,1,N,"PRUEBA WEB UI - EPL2 OK"\nA50,130,0,3,1,1,N,"Servidor: Ubuntu / Proxmox"\nA50,190,0,3,1,1,N,"Impresora: Zebra TLP2844 OK"\nP1\n'
-    elif t == "zpl":
-        payload = '^XA^PW609^LL914^FO50,50^A0N,45,45^FDPRUEBA WEB UI - ZPL OK^FS^FO50,130^A0N,30,30^FDTLP2844 / GC420t OK^FS^XZ'
-    else:
-        payload = '\nN\nq609\nQ914,24\nA60,60,0,4,1,1,N,"CODIGO BARRAS SKUNK"\nB60,130,0,1,2,6,100,B,"SKUNK-WEBUI-2026"\nP1\n'
-        
-    p = subprocess.Popen(["lp", "-d", printer, "-o", "raw"], stdin=subprocess.PIPE, text=True)
-    p.communicate(input=payload)
-    return jsonify({"ok": p.returncode == 0, "msg": f"Prueba '{t.upper()}' enviada a {printer}."})
+    
+    # 1. Trama EPL2
+    epl_payload = f'\nN\nq609\nQ914,24\nA50,50,0,4,1,1,N,"PRUEBA SKUNK-PC: {printer}"\nA50,120,0,3,1,1,N,"Servidor: Ubuntu / 192.168.1.26"\nA50,180,0,3,1,1,N,"Estado: 100x150mm WebMark OK"\nP1\n'
+    p1 = subprocess.Popen(["lp", "-d", printer, "-o", "raw"], stdin=subprocess.PIPE, text=True)
+    p1.communicate(input=epl_payload)
+    
+    # 2. Trama ZPL II
+    zpl_payload = f'^XA^PW609^LL914^FO50,50^A0N,40,40^FDPRUEBA SKUNK-PC: {printer}^FS^FO50,120^A0N,30,30^FDServidor: Ubuntu / 192.168.1.26^FS^FO50,180^A0N,30,30^FDEstado: 100x150mm WebMark OK^FS^XZ'
+    p2 = subprocess.Popen(["lp", "-d", printer, "-o", "raw"], stdin=subprocess.PIPE, text=True)
+    p2.communicate(input=zpl_payload)
+    
+    # 3. Trabajo filtrado normal CUPS
+    subprocess.run(["lp", "-d", printer, "/etc/hostname"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    
+    return jsonify({"ok": True, "msg": f"✔ Prueba de impresión omni-canal enviada exitosamente a '{printer}'."})
 
 @app.route("/api/calibrate/<printer>", methods=["POST"])
 def api_calibrate(printer):
@@ -1200,7 +1205,18 @@ def api_restore():
     run_cmd(["systemctl", "start", "cups", "avahi-daemon", "cups-browsed"])
     return jsonify({"ok": True, "msg": "¡Restauración exitosa! Todas las colas y ajustes del respaldo han sido aplicados al servidor."})
 
+def unbind_usbfs_drivers():
+    import glob
+    for path in glob.glob("/sys/bus/usb/drivers/usbfs/1-*"):
+        try:
+            device_name = os.path.basename(path)
+            with open("/sys/bus/usb/drivers/usbfs/unbind", "w") as f:
+                f.write(device_name)
+        except Exception as e:
+            pass
+
 if __name__ == "__main__":
+    unbind_usbfs_drivers()
     # Auto-patch all Zebra PPD files on startup so 100x150mm (w288h432) is always #1 and default
     ppd_dir = "/etc/cups/ppd"
     if os.path.exists(ppd_dir):
