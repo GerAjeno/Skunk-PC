@@ -947,8 +947,16 @@ def api_rename():
         
     uri = stdout.split(": ", 1)[1].strip() if ": " in stdout else stdout.split()[2].strip()
     
-    # Crear nueva, copiar política y borrar anterior
-    run_cmd(["lpadmin", "-p", new_name, "-v", uri, "-E", "-o", "printer-is-shared=true", "-D", f"Zebra ({new_name})", "-L", "Almacén Skunk-PC"])
+    # Preservar PPD existente si está en /etc/cups/ppd/
+    old_ppd = f"/etc/cups/ppd/{old_name}.ppd"
+    cmd = ["lpadmin", "-p", new_name, "-v", uri, "-E", "-o", "printer-is-shared=true", "-D", f"Zebra ({new_name})", "-L", "Almacén Skunk-PC"]
+    if os.path.exists(old_ppd):
+        cmd += ["-i", old_ppd]
+    else:
+        # Fallback a PPD ZPL por defecto si no hay PPD previo
+        cmd += ["-m", "drv:///sample.drv/zebra.ppd"]
+        
+    run_cmd(cmd)
     run_cmd(["cupsaccept", new_name])
     run_cmd(["cupsenable", new_name])
     run_cmd(["lpadmin", "-x", old_name])
