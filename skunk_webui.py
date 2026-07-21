@@ -612,7 +612,7 @@ HTML_TEMPLATE = """
                 <label>Controlador PPD y Lenguaje Nativo</label>
                 <select id="driverModel">
                     <option value="drv:///sample.drv/zebraep2.ppd">Zebra EPL2 Label Printer (Nativo TLP2844 / LP2844)</option>
-                    <option value="drv:///sample.drv/zebra.ppd">Zebra ZPL Label Printer (Nativo GC420t / ZD420)</option>
+                    <option value="/home/ger/Skunk-PC/zebra_thermal_4x6.ppd">Zebra ZPL Label Printer (Nativo GC420t / ZD420)</option>
                     <option value="raw">Raw Queue (Sin filtro de sistema - Solo envíos directos)</option>
                 </select>
             </div>
@@ -1027,7 +1027,7 @@ def api_rename():
         cmd += ["-i", old_ppd]
     else:
         # Fallback a PPD ZPL por defecto si no hay PPD previo
-        cmd += ["-m", "drv:///sample.drv/zebra.ppd"]
+        cmd += ["-m", "/home/ger/Skunk-PC/zebra_thermal_4x6.ppd"]
         
     run_cmd(cmd)
     run_cmd(["cupsaccept", new_name])
