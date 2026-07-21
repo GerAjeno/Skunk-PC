@@ -106,7 +106,9 @@ echo ""
 # ------------------------------------------------------------------------------
 log_info "Habilitando e iniciando servicios de impresión y descubrimiento ZeroConf (mDNS)..."
 
-SERVICES=("cups" "avahi-daemon" "cups-browsed")
+# Deshabilitar cups-browsed para EVITAR la creación automática no deseada de impresoras de red/USB
+systemctl disable --now cups-browsed 2>/dev/null || true
+SERVICES=("cups" "avahi-daemon")
 
 for svc in "${SERVICES[@]}"; do
     if systemctl list-unit-files "${svc}.service" >/dev/null 2>&1 || systemctl list-units --all "${svc}.service" >/dev/null 2>&1; then
