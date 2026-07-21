@@ -18,24 +18,31 @@
 *LandscapeOrientation: Plus90
 *TTPFDROptimized: True
 
-*Filter: "application/vnd.cups-raster 50 rastertozebra"
+*cupsCupsVersion: 1.0
+*cupsModelNumber: 2
+*cupsBitsPerColor: 1
+*cupsColorOrder: 0
+*cupsColorSpace: 3
+
+*cupsFilter: "application/vnd.cups-raster 50 rastertolabel"
+*Filter: "application/vnd.cups-raster 50 rastertolabel"
 
 *OpenUI *PageSize/Tamaño de Etiqueta: PickOne
 *OrderDependency: 10 AnySetup *PageSize
 *DefaultPageSize: w288h432
-*PageSize w288h432/100x150 mm (4x6 in): ""
-*PageSize w144h72/50x25 mm (2x1 in): ""
-*PageSize w288h288/100x100 mm (4x4 in): ""
-*PageSize w216h144/75x50 mm (3x2 in): ""
+*PageSize w288h432/100x150 mm (4x6 in): "<WaitMsBeforeAsync>/* CUPS PageSize */<WaitMsBeforeAsync>"
+*PageSize w144h72/50x25 mm (2x1 in): "<WaitMsBeforeAsync>/* CUPS PageSize */<WaitMsBeforeAsync>"
+*PageSize w288h288/100x100 mm (4x4 in): "<WaitMsBeforeAsync>/* CUPS PageSize */<WaitMsBeforeAsync>"
+*PageSize w216h144/75x50 mm (3x2 in): "<WaitMsBeforeAsync>/* CUPS PageSize */<WaitMsBeforeAsync>"
 *CloseUI: *PageSize
 
 *OpenUI *PageRegion/Tamaño de Etiqueta: PickOne
 *OrderDependency: 10 AnySetup *PageRegion
 *DefaultPageRegion: w288h432
-*PageRegion w288h432/100x150 mm (4x6 in): ""
-*PageRegion w144h72/50x25 mm (2x1 in): ""
-*PageRegion w288h288/100x100 mm (4x4 in): ""
-*PageRegion w216h144/75x50 mm (3x2 in): ""
+*PageRegion w288h432/100x150 mm (4x6 in): "<WaitMsBeforeAsync>/* CUPS PageRegion */<WaitMsBeforeAsync>"
+*PageRegion w144h72/50x25 mm (2x1 in): "<WaitMsBeforeAsync>/* CUPS PageRegion */<WaitMsBeforeAsync>"
+*PageRegion w288h288/100x100 mm (4x4 in): "<WaitMsBeforeAsync>/* CUPS PageRegion */<WaitMsBeforeAsync>"
+*PageRegion w216h144/75x50 mm (3x2 in): "<WaitMsBeforeAsync>/* CUPS PageRegion */<WaitMsBeforeAsync>"
 *CloseUI: *PageRegion
 
 *DefaultImageableArea: w288h432
@@ -53,18 +60,18 @@
 *OpenUI *Resolution/Resolución: PickOne
 *OrderDependency: 20 AnySetup *Resolution
 *DefaultResolution: 203dpi
-*Resolution 203dpi/203 DPI (Térmico Directo): ""
+*Resolution 203dpi/203 DPI (Térmico Directo): "<WaitMsBeforeAsync>/* CUPS Resolution */<WaitMsBeforeAsync>"
 *CloseUI: *Resolution
 
 *OpenUI *zeMediaTracking/Modo de Sensor: PickOne
 *OrderDependency: 20 AnySetup *zeMediaTracking
 *DefaultzeMediaTracking: WebMark
-*zeMediaTracking WebMark/Etiquetas con Separación (Gap): ""
-*zeMediaTracking Continuous/Continuo: ""
+*zeMediaTracking WebMark/Etiquetas con Separación (Gap): "<WaitMsBeforeAsync>/* Media Tracking */<WaitMsBeforeAsync>"
+*zeMediaTracking Continuous/Continuo: "<WaitMsBeforeAsync>/* Media Tracking */<WaitMsBeforeAsync>"
 *CloseUI: *zeMediaTracking
 
 *OpenUI *MediaType/Tipo de Medio: PickOne
 *OrderDependency: 20 AnySetup *MediaType
 *DefaultMediaType: Saved
-*MediaType Saved/Térmico Directo: ""
+*MediaType Saved/Térmico Directo: "<WaitMsBeforeAsync>/* Media Type */<WaitMsBeforeAsync>"
 *CloseUI: *MediaType

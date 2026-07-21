@@ -633,7 +633,7 @@ HTML_TEMPLATE = """
             <div class="form-group">
                 <label>Controlador PPD y Lenguaje Nativo</label>
                 <select id="driverModel">
-                    <option value="drv:///sample.drv/zebraep2.ppd">Zebra EPL2 Label Printer (Nativo TLP2844 / LP2844)</option>
+                    <option value="/home/ger/Skunk-PC/zebra_epl2_4x6.ppd">Zebra EPL2 Label Printer (Nativo TLP2844 / LP2844 / GK888t)</option>
                     <option value="/home/ger/Skunk-PC/zebra_thermal_4x6.ppd">Zebra ZPL Label Printer (Nativo GC420t / ZD420)</option>
                     <option value="raw">Raw Queue (Sin filtro de sistema - Solo envíos directos)</option>
                 </select>
@@ -962,6 +962,7 @@ def logout():
 
 @app.route("/")
 def index():
+    sync_printer_uris()
     status = get_system_status()
     printers = get_printers()
     usb_devices = get_usb_devices()
@@ -996,9 +997,10 @@ def api_calibrate(printer):
 
 @app.route("/api/reset/<printer>", methods=["POST"])
 def api_reset(printer):
+    run_cmd(["cancel", "-a", printer])
     run_cmd(["cupsaccept", printer])
     run_cmd(["cupsenable", printer])
-    run_cmd(["lpadmin", "-p", printer, "-o", "printer-error-policy=retry-job", "-E"])
+    run_cmd(["lpadmin", "-p", printer, "-o", "printer-error-policy=retry-job", "-o", "usb-unidirectional-default=true", "-E"])
     return jsonify({"ok": True, "msg": f"Cola {printer} reactivada y errores limpiados."})
 
 @app.route("/api/delete/<printer>", methods=["DELETE", "POST"])
@@ -1011,12 +1013,12 @@ def api_add():
     data = request.json
     name = data.get("name", "").strip()
     uri = data.get("uri", "").strip()
-    driver = data.get("driver", "drv:///sample.drv/zebraep2.ppd")
+    driver = data.get("driver", "/home/ger/Skunk-PC/zebra_epl2_4x6.ppd")
     
     if not name or not uri:
         return jsonify({"ok": False, "msg": "Nombre y URI requeridos."})
         
-    cmd = ["lpadmin", "-p", name, "-v", uri, "-E", "-o", "printer-is-shared=true", "-D", f"Zebra ({name})", "-L", "Almacén Skunk-PC"]
+    cmd = ["lpadmin", "-p", name, "-v", uri, "-E", "-o", "printer-is-shared=true", "-o", "usb-unidirectional-default=true", "-D", f"Zebra ({name})", "-L", "Almacén Skunk-PC"]
     if driver != "raw":
         cmd += ["-m", driver]
     else:
@@ -1025,7 +1027,7 @@ def api_add():
     ok, stdout, stderr = run_cmd(cmd)
     if not ok and driver != "raw":
         # Reintento con raw si falla el PPD
-        cmd_raw = ["lpadmin", "-p", name, "-v", uri, "-E", "-o", "raw", "-o", "printer-is-shared=true", "-D", f"Zebra ({name})", "-L", "Almacén Skunk-PC"]
+        cmd_raw = ["lpadmin", "-p", name, "-v", uri, "-E", "-o", "raw", "-o", "printer-is-shared=true", "-o", "usb-unidirectional-default=true", "-D", f"Zebra ({name})", "-L", "Almacén Skunk-PC"]
         ok, stdout, stderr = run_cmd(cmd_raw)
         
     if ok:
@@ -1052,7 +1054,7 @@ def api_rename():
     
     # Preservar PPD existente si está en /etc/cups/ppd/
     old_ppd = f"/etc/cups/ppd/{old_name}.ppd"
-    cmd = ["lpadmin", "-p", new_name, "-v", uri, "-E", "-o", "printer-is-shared=true", "-D", f"Zebra ({new_name})", "-L", "Almacén Skunk-PC"]
+    cmd = ["lpadmin", "-p", new_name, "-v", uri, "-E", "-o", "printer-is-shared=true", "-o", "usb-unidirectional-default=true", "-D", f"Zebra ({new_name})", "-L", "Almacén Skunk-PC"]
     if os.path.exists(old_ppd):
         cmd += ["-i", old_ppd]
     else:
@@ -1074,50 +1076,33 @@ def patch_ppd_file(printer, default_size="w288h432"):
         return False
     try:
         with open(ppd_path, "r", encoding="latin-1", errors="ignore") as f:
-            lines = f.readlines()
+            content = f.read()
             
+        # Ensure the w288h432 definition exists in the PPD
+        if "*PageSize w288h432" not in content:
+            content = content.replace("*CloseUI: *PageSize", '*PageSize w288h432/100x150 mm (4x6 in): "<</PageSize[288 432]/ImagingBBox null>>setpagedevice"\n*CloseUI: *PageSize')
+            content = content.replace("*CloseUI: *PageRegion", '*PageRegion w288h432/100x150 mm (4x6 in): "<</PageSize[288 432]/ImagingBBox null>>setpagedevice"\n*CloseUI: *PageRegion')
+            content += '\n*ImageableArea w288h432/100x150 mm (4x6 in): "0 0 288 432"\n*PaperDimension w288h432/100x150 mm (4x6 in): "288 432"\n'
+            
+        lines = content.split("\n")
         non_thermal = [" A4/", " A4:", " A5/", " A5:", " A5Rotated", " Letter", " Legal", " Executive"]
         new_lines = []
-        
         for line in lines:
-            # Strip lines that reference A4, A5, Letter in paper size blocks
             if any(k in line for k in non_thermal) and any(p in line for p in ["*PageSize", "*PageRegion", "*ImageableArea", "*PaperDimension"]):
                 continue
-                
             if line.startswith("*DefaultPageSize:"):
-                new_lines.append(f"*DefaultPageSize: {default_size}\n")
+                new_lines.append(f"*DefaultPageSize: {default_size}")
             elif line.startswith("*DefaultPageRegion:"):
-                new_lines.append(f"*DefaultPageRegion: {default_size}\n")
+                new_lines.append(f"*DefaultPageRegion: {default_size}")
             elif line.startswith("*DefaultImageableArea:"):
-                new_lines.append(f"*DefaultImageableArea: {default_size}\n")
+                new_lines.append(f"*DefaultImageableArea: {default_size}")
             elif line.startswith("*DefaultPaperDimension:"):
-                new_lines.append(f"*DefaultPaperDimension: {default_size}\n")
+                new_lines.append(f"*DefaultPaperDimension: {default_size}")
             else:
                 new_lines.append(line)
                 
-        final_lines = []
-        in_pagesize = False
-        pagesize_entries = []
-        for line in new_lines:
-            if line.startswith("*OpenUI *PageSize"):
-                in_pagesize = True
-                final_lines.append(line)
-            elif line.startswith("*CloseUI: *PageSize"):
-                in_pagesize = False
-                for pe in pagesize_entries:
-                    if f"*PageSize {default_size}/" in pe or f"*PageSize {default_size}:" in pe:
-                        final_lines.append(pe)
-                for pe in pagesize_entries:
-                    if not (f"*PageSize {default_size}/" in pe or f"*PageSize {default_size}:" in pe):
-                        final_lines.append(pe)
-                final_lines.append(line)
-            elif in_pagesize:
-                pagesize_entries.append(line)
-            else:
-                final_lines.append(line)
-                
         with open(ppd_path, "w", encoding="latin-1") as f:
-            f.writelines(final_lines)
+            f.write("\n".join(new_lines))
         return True
     except Exception as e:
         print(f"Error patching PPD for {printer}: {e}")
