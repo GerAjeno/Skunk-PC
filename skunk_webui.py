@@ -1262,8 +1262,13 @@ def sync_printer_uris():
                 clean_current = current_uri.replace("&nogetstatus=true", "").replace("?nogetstatus=true", "")
                 
                 if current_uri.startswith("usb://") and clean_current not in usb_uris:
+                    # Smart Auto-Heal: Extract model from old URI to find the new matching URI
+                    model_match = re.search(r"ZTC(?:%20|_)([A-Za-z0-9]+)", current_uri, re.IGNORECASE)
+                    model_str = model_match.group(1).lower() if model_match else pname.lower()
+                    
                     for u in usb_uris:
-                        if pname.lower() in u.lower() or ("gk888" in u.lower() and "chocolates" in pname.lower()) or ("gc420" in u.lower() and "plancheta" in pname.lower()) or ("unknown" in u.lower() and "chocolates" in pname.lower()):
+                        # Match if the new URI contains the model name or the queue name
+                        if model_str in u.lower() or pname.lower() in u.lower():
                             run_cmd(["lpadmin", "-p", pname, "-v", u, "-o", "usb-unidirectional-default=true", "-E"])
                             run_cmd(["cupsenable", pname])
                             break
