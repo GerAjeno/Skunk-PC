@@ -123,7 +123,7 @@ log_success "Archivos de prueba térmicos generados: ${BOLD}${TEST_EPL}${NC} (EP
 echo ""
 
 # Obtener lista de impresoras para enviar prueba
-mapfile -t PRINTER_LIST < <(lpstat -p 2>/dev/null | awk '{print $2}' || true)
+mapfile -t PRINTER_LIST < <(LC_ALL=C lpstat -p 2>/dev/null | awk '{print $2}' || true)
 
 if [ ${#PRINTER_LIST[@]} -gt 0 ]; then
     echo -e "¿Deseas enviar ahora la etiqueta de prueba a alguna de las colas activas?"

@@ -17,7 +17,7 @@ log_msg() {
 
 
 # Obtener todas las colas de impresión actuales
-mapfile -t PRINTERS < <(lpstat -p 2>/dev/null | awk '{print $2}' || true)
+mapfile -t PRINTERS < <(LC_ALL=C lpstat -p 2>/dev/null | awk '{print $2}' || true)
 
 if [ ${#PRINTERS[@]} -eq 0 ]; then
     exit 0

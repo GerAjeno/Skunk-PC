@@ -30,7 +30,7 @@ echo -e "${CYAN}================================================================
 echo -e "${BOLD} 🧪  SKUNK PC: CENTRO DE PRUEBAS DE IMPRESIÓN Y CALIBRACIÓN ${NC}"
 echo -e "${CYAN}==============================================================================${NC}"
 
-mapfile -t PRINTERS < <(lpstat -p 2>/dev/null | awk '{print $2}' || true)
+mapfile -t PRINTERS < <(LC_ALL=C lpstat -p 2>/dev/null | awk '{print $2}' || true)
 if [ ${#PRINTERS[@]} -eq 0 ]; then
     log_error "No hay colas de impresión activas en CUPS. Ejecuta primero el Paso 3."
     exit 1
@@ -38,7 +38,7 @@ fi
 
 echo -e "Impresoras disponibles para pruebas:"
 for i in "${!PRINTERS[@]}"; do
-    STATUS=$(lpstat -p "${PRINTERS[$i]}" 2>/dev/null | awk '{print $3}' || echo "idle")
+    STATUS=$(LC_ALL=C lpstat -p "${PRINTERS[$i]}" 2>/dev/null | awk '{print $3}' || echo "idle")
     echo -e "  [$((i+1))] ${BOLD}${PRINTERS[$i]}${NC} (${CYAN}${STATUS}${NC})"
 done
 echo ""

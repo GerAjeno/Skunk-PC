@@ -30,7 +30,7 @@ echo -e "${CYAN}================================================================
 echo -e "${BOLD} 🏷️  SKUNK PC: CONFIGURAR TAMAÑO Y TIPO DE ETIQUETAS TÉRMICAS ${NC}"
 echo -e "${CYAN}==============================================================================${NC}"
 
-mapfile -t PRINTERS < <(lpstat -p 2>/dev/null | awk '{print $2}' || true)
+mapfile -t PRINTERS < <(LC_ALL=C lpstat -p 2>/dev/null | awk '{print $2}' || true)
 if [ ${#PRINTERS[@]} -eq 0 ]; then
     log_error "No hay colas de impresión configuradas. Ejecuta el Paso 3 primero."
     exit 1

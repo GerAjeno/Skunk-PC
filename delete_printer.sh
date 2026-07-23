@@ -31,7 +31,7 @@ if ! systemctl is-active --quiet cups; then
 fi
 
 # Listar impresoras instaladas
-PRINTERS=($(lpstat -p 2>/dev/null | awk '{print $2}' || true))
+PRINTERS=($(LC_ALL=C lpstat -p 2>/dev/null | awk '{print $2}' || true))
 
 if [ ${#PRINTERS[@]} -eq 0 ]; then
     echo -e "${YELLOW}[INFO] No hay impresoras instaladas en este servidor CUPS.${NC}"

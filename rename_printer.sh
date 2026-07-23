@@ -31,7 +31,7 @@ echo -e "${BOLD} ✏️  SKUNK PC: CAMBIAR NOMBRE DE IMPRESORA EN CUPS ${NC}"
 echo -e "${CYAN}==============================================================================${NC}"
 
 # Obtener lista de colas actuales en CUPS
-mapfile -t PRINTERS < <(lpstat -p 2>/dev/null | awk '{print $2}' || true)
+mapfile -t PRINTERS < <(LC_ALL=C lpstat -p 2>/dev/null | awk '{print $2}' || true)
 
 if [ ${#PRINTERS[@]} -eq 0 ]; then
     log_error "No hay ninguna impresora configurada actualmente en CUPS."

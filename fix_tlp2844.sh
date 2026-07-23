@@ -103,7 +103,7 @@ echo ""
 
 # 4. Verificación y Desatasco de Colas en CUPS
 echo -e "${BOLD}=== REVISIÓN DE ESTADO DE COLAS CUPS ===${NC}"
-mapfile -t PRINTERS < <(lpstat -p 2>/dev/null | awk '{print $2}' || true)
+mapfile -t PRINTERS < <(LC_ALL=C lpstat -p 2>/dev/null | awk '{print $2}' || true)
 
 if [ ${#PRINTERS[@]} -gt 0 ]; then
     for pname in "${PRINTERS[@]}"; do
