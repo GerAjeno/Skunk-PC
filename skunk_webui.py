@@ -1285,6 +1285,11 @@ if __name__ == "__main__":
         for f in os.listdir(ppd_dir):
             if f.endswith(".ppd"):
                 p_name = f[:-4]
-                if "Lexmark" not in p_name:
-                    patch_ppd_file(p_name, "w288h432")
+                try:
+                    with open(os.path.join(ppd_dir, f), 'r', encoding='latin-1', errors='ignore') as ppd_file:
+                        header = ppd_file.read(2048)
+                        if "Zebra" in header or "EPL2" in header or "ZPL" in header or "thermal" in header.lower():
+                            patch_ppd_file(p_name, "w288h432")
+                except:
+                    pass
     app.run(host="0.0.0.0", port=8080, debug=False)
